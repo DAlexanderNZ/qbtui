@@ -1,0 +1,15 @@
+[package]
+name = "qbtui"
+version = "0.1.0"
+description = "Tui for qBittorrent"
+authors = ["daniel"]
+license = "MIT"
+edition = "2024"
+
+[dependencies]
+color-eyre = "0.6.3"
+crossterm = { version = "0.28.1", features = ["event-stream"] }
+futures = "0.3.31"
+qbit-rs = "0.4.6"
+ratatui = "0.29.0"
+tokio = { version = "1.40.0", features = ["full"] }
