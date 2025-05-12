@@ -2,14 +2,20 @@ use color_eyre::Result;
 use crossterm::event::{Event, EventStream, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use futures::{FutureExt, StreamExt};
 use ratatui::{
-    layout::{Constraint, Rect}, 
-    style::{Color, Style, Stylize}, 
+    layout::{Constraint, Layout, Rect}, 
+    style::{Color, Modifier, Style, Stylize}, 
     text::{Line, Text}, 
-    widgets::{Block, Borders, Cell, Paragraph, Row, Table, TableState}, 
+    widgets::{Block, BorderType, Borders, Cell, Paragraph, Row, ScrollbarState, Table, TableState}, 
     DefaultTerminal, Frame
 };
 use qbit_rs::{model::{GetTorrentListArg, TorrentFilter}, Qbit};
 use qbit_rs::model::Credential;
+
+const TABLE_ITEM_HEIGHT: usize = 2;
+const INFO_TEXT: [&str; 2] = [
+    "(Esc) quit | (↑) move up | (↓) move down | (←) move left | (→) move right",
+    "(q) quit | (r) refresh | (k) move up | (j) move down | (h) move left | (l) move right",
+];
 
 async fn get_torrents(credential: Credential, api_url: &str) -> Result<Vec<qbit_rs::model::Torrent>> {
     
@@ -47,7 +53,8 @@ pub struct App {
     running: bool,
     // Event stream.
     event_stream: EventStream,
-    //state: TableState,
+    state: TableState,
+    //scroll_state: ScrollbarState,
     torrents: Vec<qbit_rs::model::Torrent>,
 }
 
@@ -90,61 +97,109 @@ impl App {
                 frame.area(),
             )
         } else {
-            let area = frame.area();
-            self.render_torrents_table(frame, area);       
+            let vertical = &Layout::vertical([Constraint::Min(5), Constraint::Length(4)]);
+            let rects = vertical.split(frame.area());
+
+            self.render_torrents_table(frame, rects[0]);
+            self.render_footer(frame, rects[1]);      
         }
+    }
+
+    fn render_footer(&self, frame: &mut Frame, area: Rect) {
+        let info = Paragraph::new(Text::from_iter(INFO_TEXT))
+            .style(Style::new().fg(Color::White).bg(Color::Black))
+            .centered()
+            .block(Block::bordered()
+                .border_type(BorderType::Double)
+                .border_style(Style::new().fg(Color::White).bg(Color::Black)));
+        frame.render_widget(info, area);
     }
 
     /// Renders the torrents table in the following format:
     /// | Name | Size | Bytes Downloaded | Progress | State | DL Speed | UL Speed | ETA | Ratio |
     /// | name | size | downloaded | progress | state | dlspeed | upspeed | eta | ratio |
-    fn render_torrents_table(&self, frame: &mut Frame, area: Rect) {
-        let header = ["Name", "Size", "Bytes Downloaded", "Progress", "DL Speed", "UL Speed", "ETA", "Ratio"]
+    fn render_torrents_table(&mut self, frame: &mut Frame, area: Rect) {
+        let header = ["Name", "Size", "Bytes Downloaded", "Progress", "State" ,"DL Speed", "UL Speed", "ETA (Min)", "Ratio"]
             .into_iter()
             .map(Cell::from)
             .collect::<Row>()
-            .style(Style::default().fg(Color::White).bg(Color::Black))
+            .style(Style::default().bold().fg(Color::White).bg(Color::Black))
             .height(1);
 
-        let mut rows = vec![];
-        for torrent in &self.torrents {
-            let size = torrent.size.unwrap_or(-1) / 1048576; // Convert to MiB
+        let selected_row_style = Style::default()
+            .add_modifier(Modifier::BOLD)
+            .bg(Color::LightBlue)
+            .fg(Color::Black);
+        let selected_col_style = Style::default()
+            .add_modifier(Modifier::BOLD)
+            .bg(Color::LightBlue)
+            .fg(Color::Black);
+        let selected_cell_style = Style::default()
+            .add_modifier(Modifier::BOLD)
+            .bg(Color::Blue)
+            .fg(Color::Black);
 
-            let item = [
+        let mut rows = vec![];
+        for (i, torrent) in self.torrents.iter().enumerate() {
+            let color = if i % 2 == 0 {
+                Color::DarkGray
+            } else {
+                Color::Black
+            };
+
+            let size = torrent.size.unwrap_or(-1) / (1024 * 1024); // Convert to MiB
+            let downloaded = torrent.downloaded.unwrap_or(-1) / (1024 * 1024); // Convert to MiB
+            //TODO: Create a progress bar from the percentage
+            // Unsure if this can be done due to Cell only accepting strings and widgets::Gauge 
+            // not supporting being rendered as text.
+            let progress = torrent.progress.unwrap_or_else(|| -1.0) * 100.0; // Convert to percentage 
+            let display_state = self.get_torrent_state(torrent.state.clone());                              
+            let dlspeed = torrent.dlspeed.unwrap_or(-1) / 1024; // Convert to KiB/s
+            let upspeed = torrent.upspeed.unwrap_or(-1) / 1024; // Convert to KiB/s
+            let eta = 
+                if torrent.eta.unwrap_or(-1) == 8640000 { 0 } // Default value when completed
+                else { torrent.eta.unwrap_or(-1) / 60}; // Convert to minutes
+            let ratio = torrent.ratio.unwrap_or(-1.0);
+
+            let item: Row<'_> = [
                 torrent.name.clone().unwrap_or_else(|| String::from("")),
-                format!("{:?} MiB", size.to_string()),
-                torrent.downloaded.unwrap_or(-1).to_string(),
-                torrent.progress.unwrap_or_else(|| -1.0).to_string(),
-                //state = torrent.state.clone(),
-                torrent.dlspeed.unwrap_or(-1).to_string(),
-                torrent.upspeed.unwrap_or(-1).to_string(),
-                torrent.eta.unwrap_or(-1).to_string(),
-                torrent.ratio.unwrap().to_string(),
+                format!("{:?} MiB", size),
+                format!("{:?} MiB", downloaded),
+                format!("{:.2}%", progress),
+                display_state,
+                format!("{:?} KiB/s", dlspeed),
+                format!("{:?} KiB/s", upspeed),
+                format!("{:?}", eta),
+                format!("{:.4}", ratio),
             ]
             .into_iter()
-            .map(|content| Cell::from(Text::from(format!("\n{content}\n"))))
+            .map(|content| Cell::new(content))
             .collect::<Row>()
-            .style(Style::default().fg(Color::White).bg(Color::Black))
-            .height(2);
+            .style(Style::default().fg(Color::White).bg(color))
+            .height(TABLE_ITEM_HEIGHT as u16);
             rows.push(item);
         }
 
         let witdths = [
-            Constraint::Percentage(20),
-            Constraint::Percentage(10),
-            Constraint::Percentage(10),
-            Constraint::Percentage(10),
-            Constraint::Percentage(10),
-            Constraint::Percentage(10),
-            Constraint::Percentage(10),
-            Constraint::Percentage(10),
+            Constraint::Percentage(25), // Name
+            Constraint::Percentage(10), // Size
+            Constraint::Percentage(13), // Bytes Downloaded
+            Constraint::Percentage(8), // Progress
+            Constraint::Percentage(8), // State
+            Constraint::Percentage(9), // DL Speed
+            Constraint::Percentage(9), // UL Speed
+            Constraint::Percentage(10), // ETA
+            Constraint::Percentage(10), // Ratio
         ];
 
         let t = Table::new(rows,witdths)
             .header(header)
-            .block(Block::default().borders(Borders::ALL));
+            .block(Block::default().borders(Borders::ALL))
+            .row_highlight_style(selected_row_style)
+            .column_highlight_style(selected_col_style)
+            .cell_highlight_style(selected_cell_style);
 
-        frame.render_widget(t, area);
+        frame.render_stateful_widget(t, area, &mut self.state);
     }
 
     async fn get_torrents(&mut self) -> Result<()> {
@@ -156,6 +211,32 @@ impl App {
             Err(err) => eprintln!("Error: {}", err),
         }
         Ok(())
+    }
+
+    fn get_torrent_state(&self, torrent_state: Option<qbit_rs::model::State>) -> String {
+        let mut display_state = String::new();
+            match torrent_state {
+                Some(qbit_rs::model::State::Error) => display_state = "Error".to_string() ,
+                Some(qbit_rs::model::State::MissingFiles) => display_state = "Missing Files".to_string(),
+                Some(qbit_rs::model::State::Uploading
+                    | qbit_rs::model::State::StalledUP
+                    | qbit_rs::model::State::ForcedUP) => display_state = "Seeding".to_string(),
+                Some(qbit_rs::model::State::CheckingUP
+                    | qbit_rs::model::State::CheckingDL
+                    | qbit_rs::model::State::CheckingResumeData) => display_state = "Checking".to_string(),
+                Some(qbit_rs::model::State::PausedUP) => display_state = "Completed".to_string(),
+                Some(qbit_rs::model::State::QueuedUP) => display_state = "Queued".to_string(),
+                Some(qbit_rs::model::State::Allocating) => display_state = "Allocating".to_string(),
+                Some(qbit_rs::model::State::Downloading
+                    | qbit_rs::model::State::MetaDL
+                    | qbit_rs::model::State::ForcedDL) => display_state = "Downloading".to_string(),
+                Some(qbit_rs::model::State::PausedDL) => display_state = "Paused".to_string(),
+                Some(qbit_rs::model::State::StalledDL) => display_state = "Stalled".to_string(),
+                Some(qbit_rs::model::State::Moving) => display_state = "Moving".to_string(),
+                Some(qbit_rs::model::State::Unknown) => display_state = "Unknown".to_string(),
+                _ => display_state.push_str("Very Unknown"),
+            }
+        display_state
     }
 
     /// Reads the crossterm events and updates the state of [`App`].
@@ -191,8 +272,43 @@ impl App {
             (KeyModifiers::NONE, KeyCode::Char('r')) => {
                 // Refresh the torrents list.
             },
+            // Moving about the table
+            (_, KeyCode::Char('j') | KeyCode::Down) => self.next_row(),
+            (_, KeyCode::Char('k') | KeyCode::Up) => self.previous_row(),
+            (_, KeyCode::Char('h') | KeyCode::Left) => self.state.select_previous_column(),
+            (_, KeyCode::Char('l') | KeyCode::Right) => self.state.select_next_column(),
             _ => {}
         }
+    }
+
+    fn next_row(&mut self) {
+        let i =  match self.state.selected() {
+            Some(i) => {
+                if i >= self.torrents.len() - 1 {
+                    0
+                } else {
+                    i + 1
+                }
+            }
+            None => 0,
+        };
+        self.state.select(Some(i));
+        //self.scroll_state.position(i * TABLE_ITEM_HEIGHT);
+    }
+
+    fn previous_row(&mut self) {
+        let i = match self.state.selected() {
+            Some(i) => {
+                if i == 0 {
+                    self.torrents.len() - 1
+                } else {
+                    i - 1
+                }
+            }
+            None => 0,
+        };
+        self.state.select(Some(i));
+        //self.scroll_state.position(i * TABLE_ITEM_HEIGHT);
     }
 
     /// Set running to false to quit the application.
