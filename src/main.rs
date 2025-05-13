@@ -5,17 +5,38 @@ use ratatui::{
     layout::{Constraint, Layout, Rect}, 
     style::{Color, Modifier, Style, Stylize}, 
     text::{Line, Text}, 
-    widgets::{Block, BorderType, Borders, Cell, Paragraph, Row, ScrollbarState, Table, TableState}, 
+    widgets::{Block, BorderType, Borders, Cell, Paragraph, Row, Table, TableState}, 
     DefaultTerminal, Frame
 };
 use qbit_rs::{model::{GetTorrentListArg, TorrentFilter}, Qbit};
 use qbit_rs::model::Credential;
+use serde::{Serialize, Deserialize};
+use confy;
 
 const TABLE_ITEM_HEIGHT: usize = 2;
 const INFO_TEXT: [&str; 2] = [
     "(Esc) quit | (↑) move up | (↓) move down | (←) move left | (→) move right",
     "(q) quit | (r) refresh | (k) move up | (j) move down | (h) move left | (l) move right",
 ];
+
+#[derive(Debug, Serialize, Deserialize)]
+struct AppConfig {
+    api_url: String,
+    username: String,
+    password: String,
+    user_cfg: bool
+}
+
+impl ::std::default::Default for AppConfig {
+    fn default() -> Self {
+        Self {
+            api_url: "http://localhost:8080".into(),
+            username: "admin".into(),
+            password: "password".into(),
+            user_cfg: false,
+        }
+    }
+}
 
 async fn get_torrents(credential: Credential, api_url: &str) -> Result<Vec<qbit_rs::model::Torrent>> {
     
@@ -40,7 +61,7 @@ async fn get_torrents(credential: Credential, api_url: &str) -> Result<Vec<qbit_
 
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {
-    //get_torrents().await;
+    //let cfg: AppConfig = confy::load("qbtui", None)?;
     color_eyre::install()?;
     let terminal = ratatui::init();
     let result = App::new().run(terminal).await;
@@ -56,6 +77,7 @@ pub struct App {
     state: TableState,
     //scroll_state: ScrollbarState,
     torrents: Vec<qbit_rs::model::Torrent>,
+    cfg: AppConfig,
 }
 
 impl App {
@@ -67,6 +89,7 @@ impl App {
     /// Run the application's main loop.
     pub async fn run(mut self, mut terminal: DefaultTerminal) -> Result<()> {
         self.running = true;
+        self.cfg = confy::load("qbtui", None)?;
         self.get_torrents().await?;
         while self.running {
             terminal.draw(|frame| self.draw(frame))?;
@@ -97,6 +120,16 @@ impl App {
                 frame.area(),
             )
         } else {
+            if self.cfg.user_cfg == false {
+                eprintln!("Please change the defaults in the config file.");
+                self.cfg.user_cfg = true;
+                match confy::store("qbtui", None, &self.cfg) {
+                    Ok(_) => eprintln!("Config file created and updated."),
+                    Err(err) => eprintln!("Error creating config file: {}", err),
+                }
+                // TODO: Add a popup to ask for the API URL, username and password.
+            }
+
             let vertical = &Layout::vertical([Constraint::Min(5), Constraint::Length(4)]);
             let rects = vertical.split(frame.area());
 
@@ -181,10 +214,10 @@ impl App {
         }
 
         let witdths = [
-            Constraint::Percentage(25), // Name
+            Constraint::Percentage(27), // Name
             Constraint::Percentage(10), // Size
             Constraint::Percentage(13), // Bytes Downloaded
-            Constraint::Percentage(8), // Progress
+            Constraint::Percentage(6), // Progress
             Constraint::Percentage(8), // State
             Constraint::Percentage(9), // DL Speed
             Constraint::Percentage(9), // UL Speed
@@ -203,8 +236,8 @@ impl App {
     }
 
     async fn get_torrents(&mut self) -> Result<()> {
-        let credential = Credential::new("admin", "password");
-        let api_url = "http://localhost:8080";
+        let credential = Credential::new(&self.cfg.username, &self.cfg.password);
+        let api_url = &self.cfg.api_url;
         let torrents = get_torrents(credential, api_url).await;
         match torrents {
             Ok(torrents) => self.torrents = torrents,
