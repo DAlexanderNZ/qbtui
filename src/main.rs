@@ -1,8 +1,10 @@
+use std::u16;
+
 use color_eyre::Result;
 use crossterm::event::{Event, EventStream, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use futures::{FutureExt, StreamExt};
 use ratatui::{
-    layout::{Constraint, Layout, Rect}, 
+    layout::{Alignment, Constraint, Flex, Layout, Rect}, 
     style::{Color, Modifier, Style, Stylize}, 
     text::{Line, Text}, 
     widgets::{Block, BorderType, Borders, Cell, Paragraph, Row, Table, TableState}, 
@@ -16,7 +18,7 @@ use confy;
 const TABLE_ITEM_HEIGHT: usize = 2;
 const INFO_TEXT: [&str; 2] = [
     "(Esc) quit | (↑) move up | (↓) move down | (←) move left | (→) move right",
-    "(q) quit | (r) refresh | (k) move up | (j) move down | (h) move left | (l) move right",
+    "(e) edit cfg | (r) refresh | (k) move up | (j) move down | (h) move left | (l) move right",
 ];
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -75,6 +77,8 @@ pub struct App {
     // Event stream.
     event_stream: EventStream,
     state: TableState,
+    cfg_popup: bool,
+    save_cfg: bool,
     //scroll_state: ScrollbarState,
     torrents: Vec<qbit_rs::model::Torrent>,
     cfg: AppConfig,
@@ -104,40 +108,33 @@ impl App {
     /// - <https://docs.rs/ratatui/latest/ratatui/widgets/index.html>
     /// - <https://github.com/ratatui/ratatui/tree/master/examples>
     fn draw(&mut self, frame: &mut Frame) {
-        let title = Line::from("Ratatui Simple Template")
-            .bold()
-            .blue()
-            .centered();
-        //  Render fallback text if no torrents are available.
-        if self.torrents.is_empty() {
-            let text = "Hello, Ratatui!\n\n\
-                Created using https://github.com/ratatui/templates\n\
-                Press `Esc`, `Ctrl-C` or `q` to stop running.";
-            frame.render_widget(
-                Paragraph::new(text)
-                    .block(Block::bordered().title(title))
-                    .centered(),
-                frame.area(),
-            )
-        } else {
-            if self.cfg.user_cfg == false {
-                eprintln!("Please change the defaults in the config file.");
+
+        // Show cfg popup on first run or user input.
+        if self.cfg.user_cfg == false || self.cfg_popup == true {
+            let area = self.popup_area(frame.area(), 50, 50);
+            let block = Block::bordered()
+            .title("Config API settings").title_alignment(Alignment::Center);
+            frame.render_widget(block, area);
+
+            if self.save_cfg == true {
+                self.save_cfg = false;
                 self.cfg.user_cfg = true;
                 match confy::store("qbtui", None, &self.cfg) {
-                    Ok(_) => eprintln!("Config file created and updated."),
+                    Ok(_) => self.cfg_popup = false,
                     Err(err) => eprintln!("Error creating config file: {}", err),
                 }
-                // TODO: Add a popup to ask for the API URL, username and password.
             }
-
-            let vertical = &Layout::vertical([Constraint::Min(5), Constraint::Length(4)]);
-            let rects = vertical.split(frame.area());
-
-            self.render_torrents_table(frame, rects[0]);
-            self.render_footer(frame, rects[1]);      
         }
+
+        let vertical = &Layout::vertical([Constraint::Min(5), Constraint::Length(4)]);
+        let rects = vertical.split(frame.area());
+
+        self.render_torrents_table(frame, rects[0]);
+        self.render_footer(frame, rects[1]);      
+        
     }
 
+    /// Takes the INFO_TEXT and renders it as a widget.
     fn render_footer(&self, frame: &mut Frame, area: Rect) {
         let info = Paragraph::new(Text::from_iter(INFO_TEXT))
             .style(Style::new().fg(Color::White).bg(Color::Black))
@@ -235,6 +232,7 @@ impl App {
         frame.render_stateful_widget(t, area, &mut self.state);
     }
 
+    /// Fetches torrent list from qbittorrent api.
     async fn get_torrents(&mut self) -> Result<()> {
         let credential = Credential::new(&self.cfg.username, &self.cfg.password);
         let api_url = &self.cfg.api_url;
@@ -246,6 +244,7 @@ impl App {
         Ok(())
     }
 
+    /// Takes the torrent state returned from qbittorrent api and converts it to a human readable string.
     fn get_torrent_state(&self, torrent_state: Option<qbit_rs::model::State>) -> String {
         let mut display_state = String::new();
             match torrent_state {
@@ -270,6 +269,15 @@ impl App {
                 _ => display_state.push_str("Very Unknown"),
             }
         display_state
+    }
+
+    /// Helper to return a centered rect given x and y percentages.
+    fn popup_area(&self, area: Rect, percent_x: u16, percent_y: u16) -> Rect {
+        let horizontal = Layout::horizontal([Constraint::Percentage(percent_x)]).flex(Flex::Center); 
+        let vertical = Layout::vertical([Constraint::Percentage(percent_y)]).flex(Flex::Center);
+        let [area] = horizontal.areas(area);
+        let [area] = vertical.areas(area);
+        area
     }
 
     /// Reads the crossterm events and updates the state of [`App`].
@@ -305,6 +313,9 @@ impl App {
             (KeyModifiers::NONE, KeyCode::Char('r')) => {
                 // Refresh the torrents list.
             },
+            // Edit config popup
+            (_, KeyCode::Char('e')) => self.cfg_popup = true,
+            (KeyModifiers::CONTROL, KeyCode::Char('s')) => self.save_cfg = true,
             // Moving about the table
             (_, KeyCode::Char('j') | KeyCode::Down) => self.next_row(),
             (_, KeyCode::Char('k') | KeyCode::Up) => self.previous_row(),
