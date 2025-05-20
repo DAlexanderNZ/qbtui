@@ -165,7 +165,7 @@ impl App {
     /// Takes user input for api_url, username and password.
     fn render_cfg_popup(&self, frame: &mut Frame, area: Rect) {
         let vertical = Layout::vertical(
-            [Constraint::Length(5), Constraint::Length(5), Constraint::Length(4)]
+            [Constraint::Length(5), Constraint::Length(4)]
         );
         let rects = vertical.split(area);
         let block = Block::bordered();
@@ -179,16 +179,6 @@ impl App {
             .block(block.clone().title(" Edit config ").title_alignment(Alignment::Center))
             .alignment(Alignment::Left);
         frame.render_widget(cfg_paragraph, rects[0]);
-        let cfg_input = vec![
-            Line::from(self.cfg.api_url.clone()),
-            Line::from(self.cfg.username.clone()),
-            Line::from(std::iter::repeat("•").take(self.cfg.password.len()).collect::<String>())
-        ];
-        let cfg_input_paragraph = Paragraph::new(cfg_input)
-            .style(Style::new().fg(Color::White).bg(Color::Black))
-            .block(block.clone())
-            .alignment(Alignment::Left);
-        frame.render_widget(cfg_input_paragraph, rects[1]);
         let cfg_save_text = vec![
             Line::from("Press (Ctrl + e) to close this popup."),
             Line::from("Press (Ctrl + s) to save the config."),
@@ -197,7 +187,7 @@ impl App {
             .style(Style::new().fg(Color::White).bg(Color::Black))
             .block(block.clone())
             .alignment(Alignment::Left);
-        frame.render_widget(cfg_save_paragraph, rects[2]);
+        frame.render_widget(cfg_save_paragraph, rects[1]);
     }
 
     /// Renders the torrents table in the following format:
