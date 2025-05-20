@@ -1,8 +1,5 @@
-use std::u16;
-
 use color_eyre::Result;
-use crossterm::event::{Event, EventStream, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
-use futures::{FutureExt, StreamExt};
+use crossterm::event::EventStream;
 use ratatui::{
     layout::{Alignment, Constraint, Flex, Layout, Rect}, 
     style::{Color, Modifier, Style, Stylize}, 
@@ -15,10 +12,12 @@ use qbit_rs::model::Credential;
 use serde::{Serialize, Deserialize};
 use confy;
 
+mod input;
+
 const TABLE_ITEM_HEIGHT: usize = 2;
 const INFO_TEXT: [&str; 2] = [
     "(Esc) quit | (↑) move up | (↓) move down | (←) move left | (→) move right",
-    "(e) edit cfg | (r) refresh | (k) move up | (j) move down | (h) move left | (l) move right",
+    "(Ctrl + e) edit cfg | (r) refresh | (k) move up | (j) move down | (h) move left | (l) move right",
 ];
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -26,7 +25,6 @@ struct AppConfig {
     api_url: String,
     username: String,
     password: String,
-    user_cfg: bool
 }
 
 impl ::std::default::Default for AppConfig {
@@ -34,8 +32,7 @@ impl ::std::default::Default for AppConfig {
         Self {
             api_url: "http://localhost:8080".into(),
             username: "admin".into(),
-            password: "password".into(),
-            user_cfg: false,
+            password: "".into(),
         }
     }
 }
@@ -71,18 +68,38 @@ async fn main() -> color_eyre::Result<()> {
     result
 }
 
+#[derive(Debug)]
+enum InputMode {
+    Normal,
+    Config,
+}
+
+impl ::std::default::Default for InputMode {
+    fn default() -> Self {
+        Self::Normal
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct App {
     running: bool,
-    // Event stream.
     event_stream: EventStream,
     state: TableState,
+    //scroll_state: ScrollbarState,
+    // Input
+    // Current value of the input field
+    input: String,
+    // Position of the cursor in the input field
+    charcter_index: usize,
+    input_mode: InputMode,
+    // Config handling
     cfg_popup: bool,
     save_cfg: bool,
-    //scroll_state: ScrollbarState,
-    torrents: Vec<qbit_rs::model::Torrent>,
     cfg: AppConfig,
+    // Torrent data storage
+    torrents: Vec<qbit_rs::model::Torrent>,
 }
+
 
 impl App {
     /// Construct a new instance of [`App`].
@@ -93,6 +110,8 @@ impl App {
     /// Run the application's main loop.
     pub async fn run(mut self, mut terminal: DefaultTerminal) -> Result<()> {
         self.running = true;
+        self.input = String::new();
+        self.charcter_index = 0;
         self.cfg = confy::load("qbtui", None)?;
         self.get_torrents().await?;
         while self.running {
@@ -110,15 +129,12 @@ impl App {
     fn draw(&mut self, frame: &mut Frame) {
 
         // Show cfg popup on first run or user input.
-        if self.cfg.user_cfg == false || self.cfg_popup == true {
-            let area = self.popup_area(frame.area(), 50, 50);
-            let block = Block::bordered()
-            .title("Config API settings").title_alignment(Alignment::Center);
-            frame.render_widget(block, area);
+        if self.cfg.password == "" || self.cfg_popup == true {
+            let area = self.popup_area(frame.area(), 50, 25);
+            self.render_cfg_popup(frame, area);
 
             if self.save_cfg == true {
                 self.save_cfg = false;
-                self.cfg.user_cfg = true;
                 match confy::store("qbtui", None, &self.cfg) {
                     Ok(_) => self.cfg_popup = false,
                     Err(err) => eprintln!("Error creating config file: {}", err),
@@ -143,6 +159,45 @@ impl App {
                 .border_type(BorderType::Double)
                 .border_style(Style::new().fg(Color::White).bg(Color::Black)));
         frame.render_widget(info, area);
+    }
+
+    /// Renders the config popup.
+    /// Takes user input for api_url, username and password.
+    fn render_cfg_popup(&self, frame: &mut Frame, area: Rect) {
+        let vertical = Layout::vertical(
+            [Constraint::Length(5), Constraint::Length(5), Constraint::Length(4)]
+        );
+        let rects = vertical.split(area);
+        let block = Block::bordered();
+        let cfg_text = vec![
+            Line::from(format!("API URL: {}", self.input.as_str())),
+            Line::from("Username:"),
+            Line::from("Password:"),
+        ];
+        let cfg_paragraph = Paragraph::new(cfg_text)
+            .style(Style::new().fg(Color::White).bg(Color::Black))
+            .block(block.clone().title(" Edit config ").title_alignment(Alignment::Center))
+            .alignment(Alignment::Left);
+        frame.render_widget(cfg_paragraph, rects[0]);
+        let cfg_input = vec![
+            Line::from(self.cfg.api_url.clone()),
+            Line::from(self.cfg.username.clone()),
+            Line::from(std::iter::repeat("•").take(self.cfg.password.len()).collect::<String>())
+        ];
+        let cfg_input_paragraph = Paragraph::new(cfg_input)
+            .style(Style::new().fg(Color::White).bg(Color::Black))
+            .block(block.clone())
+            .alignment(Alignment::Left);
+        frame.render_widget(cfg_input_paragraph, rects[1]);
+        let cfg_save_text = vec![
+            Line::from("Press (Ctrl + e) to close this popup."),
+            Line::from("Press (Ctrl + s) to save the config."),
+        ];
+        let cfg_save_paragraph = Paragraph::new(cfg_save_text)
+            .style(Style::new().fg(Color::White).bg(Color::Black))
+            .block(block.clone())
+            .alignment(Alignment::Left);
+        frame.render_widget(cfg_save_paragraph, rects[2]);
     }
 
     /// Renders the torrents table in the following format:
@@ -278,81 +333,6 @@ impl App {
         let [area] = horizontal.areas(area);
         let [area] = vertical.areas(area);
         area
-    }
-
-    /// Reads the crossterm events and updates the state of [`App`].
-    async fn handle_crossterm_events(&mut self) -> Result<()> {
-        tokio::select! {
-            event = self.event_stream.next().fuse() => {
-                match event {
-                    Some(Ok(evt)) => {
-                        match evt {
-                            Event::Key(key)
-                                if key.kind == KeyEventKind::Press
-                                    => self.on_key_event(key),
-                            Event::Mouse(_) => {}
-                            Event::Resize(_, _) => {}
-                            _ => {}
-                        }
-                    }
-                    _ => {}
-                }
-            }
-            _ = tokio::time::sleep(tokio::time::Duration::from_millis(100)) => {
-                // Sleep for a short duration to avoid busy waiting.
-            }
-        }
-        Ok(())
-    }
-
-    /// Handles the key events and updates the state of [`App`].
-    fn on_key_event(&mut self, key: KeyEvent) {
-        match (key.modifiers, key.code) {
-            (_, KeyCode::Esc | KeyCode::Char('q'))
-            | (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => self.quit(),
-            (KeyModifiers::NONE, KeyCode::Char('r')) => {
-                // Refresh the torrents list.
-            },
-            // Edit config popup
-            (_, KeyCode::Char('e')) => self.cfg_popup = true,
-            (KeyModifiers::CONTROL, KeyCode::Char('s')) => self.save_cfg = true,
-            // Moving about the table
-            (_, KeyCode::Char('j') | KeyCode::Down) => self.next_row(),
-            (_, KeyCode::Char('k') | KeyCode::Up) => self.previous_row(),
-            (_, KeyCode::Char('h') | KeyCode::Left) => self.state.select_previous_column(),
-            (_, KeyCode::Char('l') | KeyCode::Right) => self.state.select_next_column(),
-            _ => {}
-        }
-    }
-
-    fn next_row(&mut self) {
-        let i =  match self.state.selected() {
-            Some(i) => {
-                if i >= self.torrents.len() - 1 {
-                    0
-                } else {
-                    i + 1
-                }
-            }
-            None => 0,
-        };
-        self.state.select(Some(i));
-        //self.scroll_state.position(i * TABLE_ITEM_HEIGHT);
-    }
-
-    fn previous_row(&mut self) {
-        let i = match self.state.selected() {
-            Some(i) => {
-                if i == 0 {
-                    self.torrents.len() - 1
-                } else {
-                    i - 1
-                }
-            }
-            None => 0,
-        };
-        self.state.select(Some(i));
-        //self.scroll_state.position(i * TABLE_ITEM_HEIGHT);
     }
 
     /// Set running to false to quit the application.
