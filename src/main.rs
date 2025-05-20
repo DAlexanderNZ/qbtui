@@ -302,27 +302,27 @@ impl App {
     /// Takes the torrent state returned from qbittorrent api and converts it to a human readable string.
     fn get_torrent_state(&self, torrent_state: Option<qbit_rs::model::State>) -> String {
         let mut display_state = String::new();
-            match torrent_state {
-                Some(qbit_rs::model::State::Error) => display_state = "Error".to_string() ,
-                Some(qbit_rs::model::State::MissingFiles) => display_state = "Missing Files".to_string(),
-                Some(qbit_rs::model::State::Uploading
-                    | qbit_rs::model::State::StalledUP
-                    | qbit_rs::model::State::ForcedUP) => display_state = "Seeding".to_string(),
-                Some(qbit_rs::model::State::CheckingUP
-                    | qbit_rs::model::State::CheckingDL
-                    | qbit_rs::model::State::CheckingResumeData) => display_state = "Checking".to_string(),
-                Some(qbit_rs::model::State::PausedUP) => display_state = "Completed".to_string(),
-                Some(qbit_rs::model::State::QueuedUP) => display_state = "Queued".to_string(),
-                Some(qbit_rs::model::State::Allocating) => display_state = "Allocating".to_string(),
-                Some(qbit_rs::model::State::Downloading
-                    | qbit_rs::model::State::MetaDL
-                    | qbit_rs::model::State::ForcedDL) => display_state = "Downloading".to_string(),
-                Some(qbit_rs::model::State::PausedDL) => display_state = "Paused".to_string(),
-                Some(qbit_rs::model::State::StalledDL) => display_state = "Stalled".to_string(),
-                Some(qbit_rs::model::State::Moving) => display_state = "Moving".to_string(),
-                Some(qbit_rs::model::State::Unknown) => display_state = "Unknown".to_string(),
-                _ => display_state.push_str("Very Unknown"),
-            }
+        match torrent_state {
+            Some(qbit_rs::model::State::Error) => display_state = "Error".to_string() ,
+            Some(qbit_rs::model::State::MissingFiles) => display_state = "Missing Files".to_string(),
+            Some(qbit_rs::model::State::Uploading
+                | qbit_rs::model::State::StalledUP
+                | qbit_rs::model::State::ForcedUP) => display_state = "Seeding".to_string(),
+            Some(qbit_rs::model::State::CheckingUP
+                | qbit_rs::model::State::CheckingDL
+                | qbit_rs::model::State::CheckingResumeData) => display_state = "Checking".to_string(),
+            Some(qbit_rs::model::State::PausedUP) => display_state = "Completed".to_string(),
+            Some(qbit_rs::model::State::QueuedUP) => display_state = "Queued".to_string(),
+            Some(qbit_rs::model::State::Allocating) => display_state = "Allocating".to_string(),
+            Some(qbit_rs::model::State::Downloading
+                | qbit_rs::model::State::MetaDL
+                | qbit_rs::model::State::ForcedDL) => display_state = "Downloading".to_string(),
+            Some(qbit_rs::model::State::PausedDL) => display_state = "Paused".to_string(),
+            Some(qbit_rs::model::State::StalledDL) => display_state = "Stalled".to_string(),
+            Some(qbit_rs::model::State::Moving) => display_state = "Moving".to_string(),
+            Some(qbit_rs::model::State::Unknown) => display_state = "Unknown".to_string(),
+            _ => display_state.push_str("Very Unknown"),
+        }
         display_state
     }
 

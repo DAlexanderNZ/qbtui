@@ -4,7 +4,7 @@ use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use futures::{FutureExt, StreamExt};
 
 impl App {
-        /// Reads the crossterm events and updates the state of [`App`].
+    /// Reads the crossterm events and updates the state of [`App`].
     pub async fn handle_crossterm_events(&mut self) -> Result<()> {
         tokio::select! {
             event = self.event_stream.next().fuse() => {
