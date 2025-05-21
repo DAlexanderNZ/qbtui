@@ -1,7 +1,7 @@
 use color_eyre::Result;
 use crossterm::event::EventStream;
 use ratatui::{
-    layout::{Alignment, Constraint, Flex, Layout, Rect}, 
+    layout::{Alignment, Constraint, Flex, Layout, Position, Rect}, 
     style::{Color, Modifier, Style, Stylize}, 
     text::{Line, Text}, 
     widgets::{Block, BorderType, Borders, Cell, Paragraph, Row, Table, TableState}, 
@@ -11,8 +11,9 @@ use qbit_rs::{model::{GetTorrentListArg, TorrentFilter}, Qbit};
 use qbit_rs::model::Credential;
 use serde::{Serialize, Deserialize};
 use confy;
-
+// Local imports
 mod input;
+use input::CurentInput;
 
 const TABLE_ITEM_HEIGHT: usize = 2;
 const INFO_TEXT: [&str; 2] = [
@@ -34,55 +35,6 @@ impl ::std::default::Default for AppConfig {
             username: "admin".into(),
             password: "".into(),
         }
-    }
-}
-
-/// Stores the currently selected field being edited.
-#[derive(Debug, Copy, Clone)]
-enum CurentInput {
-    ApiUrl,
-    Username,
-    Password
-}
-
-impl ::std::default::Default for CurentInput {
-    fn default() -> Self {
-        Self::ApiUrl
-    }
-}
-
-impl CurentInput {
-    // Return the number of fields available
-    fn count() -> usize {
-        3
-    }
-
-    // Convert the enum into its corresponding index.
-    fn to_index(self) -> usize {
-        match self {
-            CurentInput::ApiUrl => 0,
-            CurentInput::Username => 1,
-            CurentInput::Password => 2,
-        }
-    }
-
-    // Convert an index back into the enum.
-    fn from_index(i: usize) -> Self {
-        match i {
-            0 => CurentInput::ApiUrl,
-            1 => CurentInput::Username,
-            2 => CurentInput::Password,
-            _ => panic!("Index out of range"),
-        }
-    }
-
-    fn shift(self, delta: isize) -> Self {
-        let count = CurentInput::count() as isize;
-        // Convert to an index.
-        let current_index = self.to_index() as isize;
-        // Add delta and wrap around using modulo arithmetic
-        let new_index = (current_index + delta).rem_euclid(count);
-        CurentInput::from_index(new_index as usize)
     }
 }
 
@@ -144,6 +96,7 @@ pub struct App {
     input_mode: InputMode,
     // Config handling
     cfg_popup: bool,
+    first_cfg: bool,
     save_cfg: bool,
     cfg: AppConfig,
     // Torrent data storage
@@ -181,10 +134,19 @@ impl App {
 
         // Show cfg popup on first run or user input.
         if self.cfg.password == "" || self.cfg_popup == true {
+            // TODO: Make this a less ugly check for first run config.
+            if self.cfg.password == "" {
+                if self.first_cfg == false {
+                    self.input_mode = InputMode::Config;
+                    self.reset_cursor();
+                }
+                self.cfg_popup = true;
+            }
             let area = self.popup_area(frame.area(), 50, 25);
             self.render_cfg_popup(frame, area);
 
             if self.save_cfg == true {
+                self.cfg = self.input.clone();
                 self.save_cfg = false;
                 match confy::store("qbtui", None, &self.cfg) {
                     Ok(_) => self.cfg_popup = false,
@@ -233,7 +195,7 @@ impl App {
             .alignment(Alignment::Left);
         frame.render_widget(cfg_paragraph, rects[0]);
         let cfg_save_text = vec![
-            Line::from("Press (Ctrl + e) to close this popup."),
+            Line::from("Press (Ctrl + e) to close this popup (without saving)."),
             Line::from("Press (Ctrl + s) to save the config."),
         ];
         let cfg_save_paragraph = Paragraph::new(cfg_save_text)
@@ -241,6 +203,17 @@ impl App {
             .block(block.clone())
             .alignment(Alignment::Left);
         frame.render_widget(cfg_save_paragraph, rects[1]);
+
+        // Render the input cursor
+        let (label, line_index) = match self.current_input {
+            CurentInput::ApiUrl => ("API URL: ", 1),
+            CurentInput::Username => ("Username: ", 2),
+            CurentInput::Password => ("Password: ", 3),
+        };
+        // Get the cordinates of the required cursor location
+        let x = rects[0].x + label.len() as u16 + self.charcter_index as u16 + 1;
+        let y = rects[0].y + line_index as u16;
+        frame.set_cursor_position(Position::new(x, y));
     }
 
     /// Renders the torrents table in the following format:

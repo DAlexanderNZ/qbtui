@@ -1,10 +1,60 @@
-use crate::{App, InputMode, CurentInput};
+use crate::{App, InputMode};
 use color_eyre::Result;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use futures::{FutureExt, StreamExt};
 
 fn clamp_cursor(new_cursor_pos: usize, input: &String) -> usize {
     new_cursor_pos.clamp(0, input.chars().count())
+}
+
+/// Stores the currently selected field being edited.
+#[derive(Debug, Copy, Clone)]
+pub enum CurentInput {
+    ApiUrl,
+    Username,
+    Password
+}
+
+impl ::std::default::Default for CurentInput {
+    fn default() -> Self {
+        Self::ApiUrl
+    }
+}
+
+impl CurentInput {
+    // Return the number of fields available
+    fn count() -> usize {
+        3
+    }
+
+    // Convert the enum into its corresponding index.
+    fn to_index(self) -> usize {
+        match self {
+            CurentInput::ApiUrl => 0,
+            CurentInput::Username => 1,
+            CurentInput::Password => 2,
+        }
+    }
+
+    // Convert an index back into the enum.
+    fn from_index(i: usize) -> Self {
+        match i {
+            0 => CurentInput::ApiUrl,
+            1 => CurentInput::Username,
+            2 => CurentInput::Password,
+            _ => panic!("Index out of range"),
+        }
+    }
+
+    /// Shift the value of the CurrentInput enum by a float value.
+    /// Raps around the value if it exceeds the number of fields.
+    fn shift(&mut self, delta: isize) {
+        let count = CurentInput::count() as isize;
+        let current_index = self.to_index() as isize;
+        // Add delta and wrap around using modulo arithmetic
+        let new_index = (current_index + delta).rem_euclid(count) as usize;
+        *self = Self::from_index(new_index);
+    }
 }
 
 impl App {
@@ -47,6 +97,7 @@ impl App {
                     (KeyModifiers::CONTROL, KeyCode::Char('e')) => {
                         self.cfg_popup = !self.cfg_popup;
                         self.input_mode = InputMode::Config;
+                        self.reset_cursor();        
                     },
                     // Moving about the table
                     (_, KeyCode::Char('j') | KeyCode::Down) => self.next_row(),
@@ -65,17 +116,15 @@ impl App {
                     | (_, KeyCode::Esc) => {
                         self.cfg_popup = !self.cfg_popup;
                         self.input_mode = InputMode::Normal;
-                        self.reset_cursor();
                         self.input = self.cfg.clone();
                     },
                     (KeyModifiers::CONTROL, KeyCode::Char('s')) => {
                         self.save_cfg = true;
                         self.input_mode = InputMode::Normal;
-                        self.reset_cursor();
                     },
                     (_, KeyCode::Char(to_insert)) => self.enter_char(to_insert),
                     (_, KeyCode::Backspace) => self.delete_char(),
-                    (_, KeyCode::Down) => self.next_row(),
+                    (_, KeyCode::Down | KeyCode::Enter) => self.next_row(),
                     (_, KeyCode::Up) => self.previous_row(),
                     (_, KeyCode::Left) => self.previous_column(),
                     (_, KeyCode::Right) => self.next_column(),
@@ -167,6 +216,7 @@ impl App {
         }
     }
 
+    /// Returns a static reference to the currently selected input field.
     fn current_input(&self) -> &String {
         match self.current_input {
             CurentInput::ApiUrl => &self.input.api_url,
@@ -175,6 +225,7 @@ impl App {
         }
     }
 
+    /// Returns a mutable reference to the currently selected input field.
     fn current_input_mut(&mut self) -> &mut String {
         match self.current_input {
             CurentInput::ApiUrl => &mut self.input.api_url,
@@ -183,6 +234,7 @@ impl App {
         }
     }
 
+    /// Inserts a char at the current cursor position in the current input field.
     fn enter_char(&mut self, c: char) {
         let index = self.byte_index();
         let input = self.current_input_mut();
@@ -200,7 +252,7 @@ impl App {
             .unwrap_or(input.len())
     }
 
-    /// Removes char at the current cursor position from self.input
+    /// Removes char at the current cursor position from the current input field.
     fn delete_char(&mut self)  {
         if self.charcter_index != 0 {
             let current_index = self.charcter_index;
@@ -208,11 +260,12 @@ impl App {
             let before_chars = input.chars().take(current_index - 1);
             let after_chars = input.chars().skip(current_index);
             *input = before_chars.chain(after_chars).collect();
-            self.charcter_index = clamp_cursor(current_index, input);
+            self.charcter_index = clamp_cursor(current_index - 1, input);
         }
     }
 
-    const fn reset_cursor(&mut self) {
-        self.charcter_index = 0;
+    /// Resets the charcter index (cursor) to the end of the current input field.
+    pub fn reset_cursor(&mut self) {
+        self.charcter_index = self.current_input().chars().count();
     }
 }
