@@ -20,7 +20,7 @@ const INFO_TEXT: [&str; 2] = [
     "(Ctrl + e) edit cfg | (r) refresh | (k) move up | (j) move down | (h) move left | (l) move right",
 ];
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 struct AppConfig {
     api_url: String,
     username: String,
@@ -34,6 +34,55 @@ impl ::std::default::Default for AppConfig {
             username: "admin".into(),
             password: "".into(),
         }
+    }
+}
+
+/// Stores the currently selected field being edited.
+#[derive(Debug, Copy, Clone)]
+enum CurentInput {
+    ApiUrl,
+    Username,
+    Password
+}
+
+impl ::std::default::Default for CurentInput {
+    fn default() -> Self {
+        Self::ApiUrl
+    }
+}
+
+impl CurentInput {
+    // Return the number of fields available
+    fn count() -> usize {
+        3
+    }
+
+    // Convert the enum into its corresponding index.
+    fn to_index(self) -> usize {
+        match self {
+            CurentInput::ApiUrl => 0,
+            CurentInput::Username => 1,
+            CurentInput::Password => 2,
+        }
+    }
+
+    // Convert an index back into the enum.
+    fn from_index(i: usize) -> Self {
+        match i {
+            0 => CurentInput::ApiUrl,
+            1 => CurentInput::Username,
+            2 => CurentInput::Password,
+            _ => panic!("Index out of range"),
+        }
+    }
+
+    fn shift(self, delta: isize) -> Self {
+        let count = CurentInput::count() as isize;
+        // Convert to an index.
+        let current_index = self.to_index() as isize;
+        // Add delta and wrap around using modulo arithmetic
+        let new_index = (current_index + delta).rem_euclid(count);
+        CurentInput::from_index(new_index as usize)
     }
 }
 
@@ -88,7 +137,8 @@ pub struct App {
     //scroll_state: ScrollbarState,
     // Input
     // Current value of the input field
-    input: String,
+    input: AppConfig,
+    current_input: CurentInput,
     // Position of the cursor in the input field
     charcter_index: usize,
     input_mode: InputMode,
@@ -110,9 +160,10 @@ impl App {
     /// Run the application's main loop.
     pub async fn run(mut self, mut terminal: DefaultTerminal) -> Result<()> {
         self.running = true;
-        self.input = String::new();
+        //self.input = String::new();
         self.charcter_index = 0;
         self.cfg = confy::load("qbtui", None)?;
+        self.input = self.cfg.clone();
         self.get_torrents().await?;
         while self.running {
             terminal.draw(|frame| self.draw(frame))?;
@@ -169,10 +220,12 @@ impl App {
         );
         let rects = vertical.split(area);
         let block = Block::bordered();
+        let rendered_password: String = std::iter::repeat("*")
+            .take(self.input.password.len()).collect();
         let cfg_text = vec![
-            Line::from(format!("API URL: {}", self.input.as_str())),
-            Line::from("Username:"),
-            Line::from("Password:"),
+            Line::from(format!("API URL: {}", self.input.api_url.as_str())),
+            Line::from(format!("Username: {}", self.input.username.as_str())),
+            Line::from(format!("Password: {}", rendered_password.as_str())),
         ];
         let cfg_paragraph = Paragraph::new(cfg_text)
             .style(Style::new().fg(Color::White).bg(Color::Black))

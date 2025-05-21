@@ -1,7 +1,11 @@
-use crate::{App, InputMode};
+use crate::{App, InputMode, CurentInput};
 use color_eyre::Result;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use futures::{FutureExt, StreamExt};
+
+fn clamp_cursor(new_cursor_pos: usize, input: &String) -> usize {
+    new_cursor_pos.clamp(0, input.chars().count())
+}
 
 impl App {
     /// Reads the crossterm events and updates the state of [`App`].
@@ -62,7 +66,7 @@ impl App {
                         self.cfg_popup = !self.cfg_popup;
                         self.input_mode = InputMode::Normal;
                         self.reset_cursor();
-                        self.input.clear();
+                        self.input = self.cfg.clone();
                     },
                     (KeyModifiers::CONTROL, KeyCode::Char('s')) => {
                         self.save_cfg = true;
@@ -101,7 +105,9 @@ impl App {
                 //self.scroll_state.position(i * TABLE_ITEM_HEIGHT);
             },
             InputMode::Config => {
-                println!("One day Down")
+                self.current_input.shift(1);
+                let input = self.current_input();
+                self.charcter_index = clamp_cursor(input.len(), input);
             }
         }
     }
@@ -126,7 +132,9 @@ impl App {
                 //self.scroll_state.position(i * TABLE_ITEM_HEIGHT);
             },
             InputMode::Config => {
-                println!("One day Up")
+                self.current_input.shift(-1);
+                let input = self.current_input();
+                self.charcter_index = clamp_cursor(input.len(), input);
             }
         }
     }
@@ -138,8 +146,9 @@ impl App {
         match self.input_mode {
             InputMode::Normal => self.state.select_next_column(),
             InputMode::Config => { 
+                let input = self.current_input();
                 let cursor_moved_right = self.charcter_index.saturating_add(1);
-                self.charcter_index = self.clamp_cursor(cursor_moved_right); 
+                self.charcter_index = clamp_cursor(cursor_moved_right, input); 
             }
         }
     }
@@ -151,39 +160,56 @@ impl App {
         match self.input_mode {
             InputMode::Normal => self.state.select_previous_column(),
             InputMode::Config => { 
+                let input = self.current_input();
                 let cursor_moved_left = self.charcter_index.saturating_sub(1);
-                self.charcter_index = self.clamp_cursor(cursor_moved_left);
+                self.charcter_index = clamp_cursor(cursor_moved_left, input);
             }
+        }
+    }
+
+    fn current_input(&self) -> &String {
+        match self.current_input {
+            CurentInput::ApiUrl => &self.input.api_url,
+            CurentInput::Username => &self.input.username,
+            CurentInput::Password => &self.input.password
+        }
+    }
+
+    fn current_input_mut(&mut self) -> &mut String {
+        match self.current_input {
+            CurentInput::ApiUrl => &mut self.input.api_url,
+            CurentInput::Username => &mut self.input.username,
+            CurentInput::Password => &mut self.input.password
         }
     }
 
     fn enter_char(&mut self, c: char) {
         let index = self.byte_index();
-        self.input.insert(index, c);
+        let input = self.current_input_mut();
+        input.insert(index, c);
         self.next_column();
     }
 
 
     fn byte_index(&self) -> usize {
-        self.input
+        let input = self.current_input();
+        input
             .char_indices()
             .map(|(i, _)| i)
             .nth(self.charcter_index)
-            .unwrap_or(self.input.len())
+            .unwrap_or(input.len())
     }
 
     /// Removes char at the current cursor position from self.input
     fn delete_char(&mut self)  {
         if self.charcter_index != 0 {
             let current_index = self.charcter_index;
-            let before_chars = self.input.chars().take(current_index - 1);
-            let after_chars = self.input.chars().skip(current_index);
-            self.input = before_chars.chain(after_chars).collect();
+            let input = self.current_input_mut();
+            let before_chars = input.chars().take(current_index - 1);
+            let after_chars = input.chars().skip(current_index);
+            *input = before_chars.chain(after_chars).collect();
+            self.charcter_index = clamp_cursor(current_index, input);
         }
-    }
-
-    fn clamp_cursor(&self, new_cursor_pos: usize) -> usize {
-        new_cursor_pos.clamp(0, self.input.chars().count())
     }
 
     const fn reset_cursor(&mut self) {
