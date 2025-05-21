@@ -101,6 +101,7 @@ pub struct App {
     cfg: AppConfig,
     // Torrent data storage
     torrents: Vec<qbit_rs::model::Torrent>,
+    refresh_torrents: bool,
 }
 
 
@@ -121,6 +122,11 @@ impl App {
         while self.running {
             terminal.draw(|frame| self.draw(frame))?;
             self.handle_crossterm_events().await?;
+            // TODO: With time delay regularly refresh the torrents.
+            if self.refresh_torrents {
+                self.get_torrents().await?;
+                self.refresh_torrents = false;
+            }
         }
         Ok(())
     }
@@ -304,13 +310,14 @@ impl App {
     }
 
     /// Fetches torrent list from qbittorrent api.
-    async fn get_torrents(&mut self) -> Result<()> {
+    pub async fn get_torrents(&mut self) -> Result<()> {
         let credential = Credential::new(&self.cfg.username, &self.cfg.password);
         let api_url = &self.cfg.api_url;
         let torrents = get_torrents(credential, api_url).await;
         match torrents {
             Ok(torrents) => self.torrents = torrents,
-            Err(err) => eprintln!("Error: {}", err),
+            // TODO: Create a popup with the error message.
+            Err(_err) => {},
         }
         Ok(())
     }

@@ -85,13 +85,18 @@ impl App {
 
     /// Handles the key events and updates the state of [`App`].
     fn on_key_event(&mut self, key: KeyEvent) {
+        // Global keys
+        match (key.modifiers, key.code) {
+            (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => self.quit(),
+            _ => {}
+        }
+
+        // Mode specific keys
         match self.input_mode {
             InputMode::Normal => {
                 match (key.modifiers, key.code) {
-                    (_, KeyCode::Esc | KeyCode::Char('q'))
-                    | (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => self.quit(),
                     (_, KeyCode::Char('r')) => {
-                        // TODO: Refresh the torrents list.
+                        self.refresh_torrents = true;
                     },
                     // Open/Close edit config popup
                     (KeyModifiers::CONTROL, KeyCode::Char('e')) => {
@@ -111,7 +116,6 @@ impl App {
             },
             InputMode::Config => {
                 match (key.modifiers, key.code) {
-                    (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => self.quit(),
                     (KeyModifiers::CONTROL, KeyCode::Char('e')) 
                     | (_, KeyCode::Esc) => {
                         self.cfg_popup = !self.cfg_popup;
@@ -120,6 +124,7 @@ impl App {
                     },
                     (KeyModifiers::CONTROL, KeyCode::Char('s')) => {
                         self.save_cfg = true;
+                        self.refresh_torrents = true;
                         self.input_mode = InputMode::Normal;
                     },
                     (_, KeyCode::Char(to_insert)) => self.enter_char(to_insert),
