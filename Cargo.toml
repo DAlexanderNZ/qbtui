@@ -6,6 +6,15 @@ authors = ["Daniel Alexander"]
 license = "MIT"
 edition = "2024"
 
+[profile.release]
+debug = "full"
+lto = true
+opt-level = "s"
+panic = "abort"
+split-debuginfo = "packed"
+strip = "symbols"
+incremental = true
+
 [dependencies]
 color-eyre = "0.6.3"
 confy = "1.0.0"
