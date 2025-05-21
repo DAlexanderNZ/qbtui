@@ -95,6 +95,7 @@ impl App {
         match self.input_mode {
             InputMode::Normal => {
                 match (key.modifiers, key.code) {
+                    (_, KeyCode::Esc) => self.quit(),
                     (_, KeyCode::Char('r')) => {
                         self.refresh_torrents = true;
                     },
@@ -104,6 +105,7 @@ impl App {
                         self.input_mode = InputMode::Config;
                         self.reset_cursor();        
                     },
+                    (_, KeyCode::Tab) => self.torrent_popup = !self.torrent_popup,
                     // Moving about the table
                     (_, KeyCode::Char('j') | KeyCode::Down) => self.next_row(),
                     (_, KeyCode::Char('k') | KeyCode::Up) => self.previous_row(),
