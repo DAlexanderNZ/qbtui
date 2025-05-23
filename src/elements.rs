@@ -71,7 +71,7 @@ impl App {
     /// | Name | Size | Bytes Downloaded | Progress | State | DL Speed | UL Speed | ETA | Ratio |
     /// | name | size | downloaded | progress | state | dlspeed | upspeed | eta | ratio |
     pub fn render_torrents_table(&mut self, frame: &mut Frame, area: Rect) {
-        let header = ["Name", "Size", "Bytes Downloaded", "Progress", "State" ,"DL Speed", "UL Speed", "ETA (Min)", "Ratio"]
+        let header = ["Name", "Size", "Bytes Downloaded", "Progress", "State" ,"DL Speed", "UL Speed", "ETA", "Ratio"]
             .into_iter()
             .map(Cell::from)
             .collect::<Row>()
@@ -108,9 +108,7 @@ impl App {
             let display_state = self.get_torrent_state(torrent.state.clone());                              
             let dlspeed = self.format_rate(torrent.dlspeed.unwrap_or(0));
             let upspeed = self.format_rate(torrent.upspeed.unwrap_or(0));
-            let eta = 
-                if torrent.eta.unwrap_or(-1) == 8640000 { 0 } // Default value when completed
-                else { torrent.eta.unwrap_or(-1) / 60}; // Convert to minutes
+            let eta = self.format_seconds(torrent.eta.unwrap_or(0));
             let ratio = torrent.ratio.unwrap_or(-1.0);
 
             let item: Row<'_> = [
@@ -121,7 +119,7 @@ impl App {
                 display_state,
                 format!("{}", dlspeed),
                 format!("{}", upspeed),
-                format!("{:?}", eta),
+                format!("{}", eta),
                 format!("{:.4}", ratio),
             ]
             .into_iter()
@@ -171,14 +169,15 @@ impl App {
             .gauge_style(Style::new().fg(Color::Green).bg(Color::Black))
             .percent((selected_torrent.progress.unwrap_or_else(|| 0.0) * 100.0) as u16);
         frame.render_widget(progress, rects[0]);
+        
         // Verbose torrent transfer info
         let mut rows = vec![];
         let eta = 
                 if selected_torrent.eta.unwrap_or(-1) == 8640000 { 0 } // Default value when completed
                 else { selected_torrent.eta.unwrap_or(-1) / 60};
         let row_one: Row<'_> = [
-            format!("Time Active: {:?}", selected_torrent.time_active.unwrap_or(-1)), //TODO: Format this to human readable
-            format!("Eta: {:?}", eta),
+            format!("Time Active: {}", self.format_seconds(selected_torrent.time_active.unwrap_or(0))),
+            format!("Eta: {}", self.format_seconds(eta)),
             format!("Connections: {:?}", selected_torrent.num_complete.unwrap_or(-1))
         ]
         .into_iter()
@@ -230,12 +229,13 @@ impl App {
         let t = Table::new(rows, &widths)
         .block(block.clone().title("Transfer").title_alignment(Alignment::Center));
         frame.render_widget(t, rects[1]);
+
         // File/torrent info
         let mut rows_two = vec![];
         let row_one = [
-            format!("Total Size: {:?}", self.format_bytes(selected_torrent.size.unwrap_or(0))),
-            format!("Hash v1: {:?}", selected_torrent.hash.clone()),
-            format!("Save Path: {:?}", selected_torrent.save_path.clone().unwrap())
+            format!("Total Size: {}", self.format_bytes(selected_torrent.size.unwrap_or(0))),
+            format!("Hash: {}", selected_torrent.hash.clone().unwrap()),
+            format!("Save Path: {}", selected_torrent.save_path.clone().unwrap())
         ]
         .into_iter()
         .map(|content| Cell::new(content))

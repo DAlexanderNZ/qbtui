@@ -1,6 +1,6 @@
 use crate::App;
 use ratatui::layout::{Constraint, Flex, Layout, Rect};
-use chrono::{DateTime};
+use chrono::DateTime;
 
 impl App {
     /// Takes the torrent state returned from qbittorrent api and converts it to a human readable string.
@@ -83,6 +83,37 @@ impl App {
             format!("{:.0} {}", rate, units[unit])
         } else {
             format!("{:.2} {}", rate, units[unit])
+        }
+    }
+
+    /// Convert seconds elapsed to formated string.
+    /// Format: 1W:2D:3H:4M:5S
+    pub fn format_seconds(&self, mut seconds: i64) -> String {
+        let weeks = seconds / 604800;
+        seconds %= 604800;
+        let days = seconds / 86400;
+        seconds %= 86400;
+        let hours = seconds / 3600;
+        seconds %= 3600;
+        let minutes = seconds / 60;
+        seconds %= 60;
+        //format!("{:02}D:{:02}H:{:02}M:{:02}S", days, hours, minutes, seconds)
+        let formatted = [
+            (weeks, "W"),
+            (days, "D"),
+            (hours, "H"),
+            (minutes, "M"),
+            (seconds, "S"),
+        ]
+        .iter()
+        .filter(|(v, _)| *v > 0)
+        .map(|(v, s)| format!("{}{}", v, s))
+        .collect::<Vec<_>>()
+        .join(":");
+        if formatted.is_empty() {
+            "0".to_string()
+        } else {
+            formatted
         }
     }
 }
