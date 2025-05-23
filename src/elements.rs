@@ -99,15 +99,15 @@ impl App {
                 Color::Black
             };
 
-            let size = torrent.size.unwrap_or(-1) / (1024 * 1024); // Convert to MiB
-            let downloaded = torrent.downloaded.unwrap_or(-1) / (1024 * 1024); // Convert to MiB
+            let size = self.format_bytes(torrent.size.unwrap_or(0));
+            let downloaded = self.format_bytes(torrent.downloaded.unwrap_or(0));
             //TODO: Create a progress bar from the percentage
             // Unsure if this can be done due to Cell only accepting strings and widgets::Gauge 
             // not supporting being rendered as text.
             let progress = torrent.progress.unwrap_or_else(|| -1.0) * 100.0; // Convert to percentage 
             let display_state = self.get_torrent_state(torrent.state.clone());                              
-            let dlspeed = torrent.dlspeed.unwrap_or(-1) / 1024; // Convert to KiB/s
-            let upspeed = torrent.upspeed.unwrap_or(-1) / 1024; // Convert to KiB/s
+            let dlspeed = self.format_rate(torrent.dlspeed.unwrap_or(0));
+            let upspeed = self.format_rate(torrent.upspeed.unwrap_or(0));
             let eta = 
                 if torrent.eta.unwrap_or(-1) == 8640000 { 0 } // Default value when completed
                 else { torrent.eta.unwrap_or(-1) / 60}; // Convert to minutes
@@ -115,12 +115,12 @@ impl App {
 
             let item: Row<'_> = [
                 torrent.name.clone().unwrap_or_else(|| String::from("")),
-                format!("{:?} MiB", size),
-                format!("{:?} MiB", downloaded),
+                format!("{}", size),
+                format!("{}", downloaded),
                 format!("{:.2}%", progress),
                 display_state,
-                format!("{:?} KiB/s", dlspeed),
-                format!("{:?} KiB/s", upspeed),
+                format!("{}", dlspeed),
+                format!("{}", upspeed),
                 format!("{:?}", eta),
                 format!("{:.4}", ratio),
             ]
@@ -154,6 +154,8 @@ impl App {
         frame.render_stateful_widget(t, area, &mut self.state);
     }
 
+    /// Renders detailed information about the selected torrent in a popup.
+    /// The popup contains a progress bar, torrent transfer info, and file/torrent info.
     pub fn render_selected_torrent(&self, frame: &mut Frame, area: Rect) {
         let vertical = Layout::vertical(
             [Constraint::Length(5), Constraint::Length(7), Constraint::Length(4)]
@@ -171,9 +173,12 @@ impl App {
         frame.render_widget(progress, rects[0]);
         // Verbose torrent transfer info
         let mut rows = vec![];
+        let eta = 
+                if selected_torrent.eta.unwrap_or(-1) == 8640000 { 0 } // Default value when completed
+                else { selected_torrent.eta.unwrap_or(-1) / 60};
         let row_one: Row<'_> = [
-            format!("Time Active: {:?}", selected_torrent.time_active.unwrap_or(-1)),
-            format!("Eta: {:?}", selected_torrent.eta.unwrap_or(-1)),
+            format!("Time Active: {:?}", selected_torrent.time_active.unwrap_or(-1)), //TODO: Format this to human readable
+            format!("Eta: {:?}", eta),
             format!("Connections: {:?}", selected_torrent.num_complete.unwrap_or(-1))
         ]
         .into_iter()
@@ -181,8 +186,8 @@ impl App {
         .collect::<Row>();
         rows.push(row_one);
         let row_two: Row<'_> = [
-            format!("Downloaded: {:?}", selected_torrent.downloaded.unwrap_or(-1)),
-            format!("Uploaded: {:?}", selected_torrent.uploaded.unwrap_or(-1)),
+            format!("Downloaded: {}", self.format_bytes(selected_torrent.downloaded.unwrap_or(0))),
+            format!("Uploaded: {}", self.format_bytes(selected_torrent.uploaded.unwrap_or(0))),
             format!("Seeds: {:?}", selected_torrent.num_seeds.unwrap_or(-1))
         ]
         .into_iter()
@@ -190,8 +195,8 @@ impl App {
         .collect::<Row>();
         rows.push(row_two);
         let row_three: Row<'_> = [
-            format!("Download Speed: {:?} B/s", selected_torrent.dlspeed.unwrap_or(-1)),
-            format!("Upload Speed: {:?} B/s", selected_torrent.upspeed.unwrap_or(-1)),
+            format!("Download Speed: {}", self.format_rate(selected_torrent.dlspeed.unwrap_or(0))),
+            format!("Upload Speed: {}", self.format_rate(selected_torrent.upspeed.unwrap_or(0))),
             format!("Peers: {:?}", selected_torrent.num_incomplete.unwrap_or(-1))
         ]
         .into_iter()
@@ -201,16 +206,16 @@ impl App {
         let row_four: Row<'_> = [
             format!("Download Limit: {:?}", selected_torrent.dl_limit.unwrap_or(-1)),
             format!("Upload Limit: {:?}", selected_torrent.up_limit.unwrap_or(-1)),
-            format!("Sequential Dl: {:?}", selected_torrent.seq_dl)
+            format!("Sequential Dl: {:?}", selected_torrent.seq_dl.unwrap())
         ]
         .into_iter()
         .map(|content| Cell::new(content))
         .collect::<Row>();
         rows.push(row_four);
         let row_five: Row<'_> = [
-            format!("Share Ratio: {:?}", selected_torrent.ratio.unwrap_or(-1.0)),
-            format!("Status: {:?}", self.get_torrent_state(selected_torrent.state.clone())),
-            format!("Last  Seen Complete: {:?}", selected_torrent.last_activity.unwrap_or(-1))
+            format!("Share Ratio: {:.6}", selected_torrent.ratio.unwrap_or(-1.0)),
+            format!("Status: {}", self.get_torrent_state(selected_torrent.state.clone())),
+            format!("Last Seen Complete: {}", self.timestamp_human_readable(selected_torrent.last_activity))
         ]
         .into_iter()
         .map(|content| Cell::new(content))
@@ -228,18 +233,18 @@ impl App {
         // File/torrent info
         let mut rows_two = vec![];
         let row_one = [
-            format!("Total Size: {:?}", selected_torrent.size.unwrap_or(-1)),
+            format!("Total Size: {:?}", self.format_bytes(selected_torrent.size.unwrap_or(0))),
             format!("Hash v1: {:?}", selected_torrent.hash.clone()),
-            format!("Save Path: {:?}", selected_torrent.save_path.clone())
+            format!("Save Path: {:?}", selected_torrent.save_path.clone().unwrap())
         ]
         .into_iter()
         .map(|content| Cell::new(content))
         .collect::<Row>();
         rows_two.push(row_one);
         let row_two = [
-            format!("Added On: {:?}", selected_torrent.added_on.unwrap_or(-1)),
-            format!("Completed On: {:?}", selected_torrent.completion_on.unwrap_or(-1)),
-            format!("Tracker: {:?}", selected_torrent.tracker)
+            format!("Added On: {}", self.timestamp_human_readable(selected_torrent.added_on)),
+            format!("Completed On: {}", self.timestamp_human_readable(selected_torrent.completion_on)),
+            format!("Tracker: {}", selected_torrent.tracker.clone().unwrap())
         ]
         .into_iter()
         .map(|content| Cell::new(content))

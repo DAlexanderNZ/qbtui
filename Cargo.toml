@@ -16,6 +16,7 @@ strip = "symbols"
 incremental = true
 
 [dependencies]
+chrono = "0.4.41"
 color-eyre = "0.6.3"
 confy = "1.0.0"
 crossterm = { version = "0.28.1", features = ["event-stream"] }
