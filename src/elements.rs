@@ -32,7 +32,7 @@ impl App {
             [Constraint::Length(5), Constraint::Length(4)]
         );
         let rects = vertical.split(area);
-        let block = Block::bordered();
+        let block = Block::bordered().style(Style::new().fg(Color::White).bg(Color::Black));
         let rendered_password: String = std::iter::repeat("*")
             .take(self.input.password.len()).collect();
         let cfg_text = vec![
@@ -161,7 +161,7 @@ impl App {
             [Constraint::Length(5), Constraint::Length(7), Constraint::Length(4)]
         );
         let rects = vertical.split(area);
-        let block = Block::bordered();
+        let block = Block::bordered().style(Style::new().fg(Color::White).bg(Color::Black));
         let selected_torrent = self.torrents.get(self.state.selected().unwrap_or(0)).unwrap();
         let torrent_name = selected_torrent.name.clone().unwrap_or_else(|| String::from(""));
         // Progress bar
