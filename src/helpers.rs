@@ -89,6 +89,10 @@ impl App {
     /// Convert seconds elapsed to formated string.
     /// Format: 1W:2D:3H:4M:5S
     pub fn format_seconds(&self, mut seconds: i64) -> String {
+        // ETA returns 8640000 when the torrent is complete
+        if seconds == 8640000 {
+            return "0".to_string();
+        }
         let weeks = seconds / 604800;
         seconds %= 604800;
         let days = seconds / 86400;

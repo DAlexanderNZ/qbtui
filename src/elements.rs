@@ -9,7 +9,7 @@ use ratatui::{
 
 const TABLE_ITEM_HEIGHT: usize = 2;
 const INFO_TEXT: [&str; 2] = [
-    "(Esc) quit | (↑) move up | (↓) move down | (←) move left | (→) move right",
+    "(Esc) quit | (Tab) details | (↑) move up | (↓) move down | (←) move left | (→) move right",
     "(Ctrl + e) edit cfg | (r) refresh | (k) move up | (j) move down | (h) move left | (l) move right",
 ];
 
@@ -152,11 +152,11 @@ impl App {
         frame.render_stateful_widget(t, area, &mut self.state);
     }
 
-    /// Renders detailed information about the selected torrent in a popup.
+    /// Renders detailed information about the selected torrent in a footer.
     /// The popup contains a progress bar, torrent transfer info, and file/torrent info.
     pub fn render_selected_torrent(&self, frame: &mut Frame, area: Rect) {
         let vertical = Layout::vertical(
-            [Constraint::Length(5), Constraint::Length(7), Constraint::Length(4)]
+            [Constraint::Length(3), Constraint::Length(7), Constraint::Length(4)]
         );
         let rects = vertical.split(area);
         let block = Block::bordered().style(Style::new().fg(Color::White).bg(Color::Black));
@@ -169,7 +169,7 @@ impl App {
             .gauge_style(Style::new().fg(Color::Green).bg(Color::Black))
             .percent((selected_torrent.progress.unwrap_or_else(|| 0.0) * 100.0) as u16);
         frame.render_widget(progress, rects[0]);
-        
+
         // Verbose torrent transfer info
         let mut rows = vec![];
         let eta = 

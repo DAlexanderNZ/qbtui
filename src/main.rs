@@ -132,19 +132,29 @@ impl App {
     /// - <https://docs.rs/ratatui/latest/ratatui/widgets/index.html>
     /// - <https://github.com/ratatui/ratatui/tree/master/examples>
     fn draw(&mut self, frame: &mut Frame) {
-        let vertical = &Layout::vertical([Constraint::Min(5), Constraint::Length(4)]);
-        let rects = vertical.split(frame.area());
+        let rects;
+        let footer: usize;
+        // Split frame area depending on whether the torrent info section is active.
+        if self.torrent_popup == true {
+            let vertical = &Layout::vertical([Constraint::Min(5), Constraint::Length(14), Constraint::Length(4)]);
+            rects = vertical.split(frame.area());
+            footer = 2;
+        } else {
+            let vertical = &Layout::vertical([Constraint::Min(5), Constraint::Length(4)]);
+            rects = vertical.split(frame.area());
+            footer = 1;
+        }
 
         self.render_torrents_table(frame, rects[0]);
-        self.render_footer(frame, rects[1]);      
+        self.render_footer(frame, rects[footer]);      
 
-        // Show torrent info popup
+        // Show torrent info footer
         if self.torrent_popup == true  && self.torrents.len() > 0 {
-            let area = self.popup_area(frame.area(), 80, 80);
-            self.render_selected_torrent(frame, area);
+            self.render_selected_torrent(frame, rects[1]);
         }  else {
             self.torrent_popup = false;
         }
+        
         // Show cfg popup on first run or user input.
         if self.cfg.password == "" || self.cfg_popup == true {
             // TODO: Make this a less ugly check for first run config.
