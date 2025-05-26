@@ -158,7 +158,7 @@ impl App {
                     None => 0,
                 };
                 self.state.select(Some(i));
-                //self.scroll_state.position(i * TABLE_ITEM_HEIGHT);
+                self.scroll_state = self.scroll_state.position(i);
             },
             InputMode::Config => {
                 self.current_input.shift(1);
@@ -185,7 +185,7 @@ impl App {
                     None => 0,
                 };
                 self.state.select(Some(i));
-                //self.scroll_state.position(i * TABLE_ITEM_HEIGHT);
+                self.scroll_state = self.scroll_state.position(i);
             },
             InputMode::Config => {
                 self.current_input.shift(-1);

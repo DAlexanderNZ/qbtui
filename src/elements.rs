@@ -3,7 +3,7 @@ use ratatui::{
     layout::{Constraint, Alignment, Position, Layout, Rect},
     style::{Color, Modifier, Style, Stylize},
     text::{Line, Text},
-    widgets::{Block, BorderType, Borders, Cell, Paragraph, Row, Table, Gauge},
+    widgets::{Block, BorderType, Borders, Cell, Paragraph, Row, Table, Scrollbar, ScrollbarOrientation,  Gauge},
     Frame
 };
 
@@ -150,6 +150,10 @@ impl App {
             .cell_highlight_style(selected_cell_style);
 
         frame.render_stateful_widget(t, area, &mut self.state);
+
+        // Render the scrollbar on the right side of the table
+        self.scroll_state = self.scroll_state.content_length(self.torrents.len()).viewport_content_length(TABLE_ITEM_HEIGHT);
+        frame.render_stateful_widget(Scrollbar::new(ScrollbarOrientation::VerticalRight), area, &mut self.scroll_state);
     }
 
     /// Renders detailed information about the selected torrent in a footer.

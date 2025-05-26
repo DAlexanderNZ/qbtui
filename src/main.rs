@@ -2,7 +2,7 @@ use color_eyre::Result;
 use crossterm::event::EventStream;
 use ratatui::{
     layout::{Constraint, Layout},  
-    widgets::TableState, 
+    widgets::{TableState, ScrollbarState}, 
     DefaultTerminal, Frame
 };
 use qbit_rs::{model::{GetTorrentListArg, TorrentFilter}, Qbit};
@@ -80,6 +80,7 @@ pub struct App {
     running: bool,
     event_stream: EventStream,
     state: TableState,
+    scroll_state: ScrollbarState,
     //scroll_state: ScrollbarState,
     // Input
     // Current value of the input field
@@ -109,7 +110,6 @@ impl App {
     /// Run the application's main loop.
     pub async fn run(mut self, mut terminal: DefaultTerminal) -> Result<()> {
         self.running = true;
-        //self.input = String::new();
         self.charcter_index = 0;
         self.cfg = confy::load("qbtui", None)?;
         self.input = self.cfg.clone();
