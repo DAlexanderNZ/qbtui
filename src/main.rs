@@ -11,7 +11,7 @@ use serde::{Serialize, Deserialize};
 use confy;
 // Local imports
 mod input;
-use input::CurentInput;
+use input::{CurentInput, SelectedInfoTab};
 mod elements;
 mod helpers;
 
@@ -97,7 +97,9 @@ pub struct App {
     // Torrent data storage
     torrents: Vec<qbit_rs::model::Torrent>,
     refresh_torrents: bool,
+    // Torrent info popup
     torrent_popup: bool,
+    info_tab: SelectedInfoTab,
 }
 
 
@@ -136,7 +138,7 @@ impl App {
         let footer: usize;
         // Split frame area depending on whether the torrent info section is active.
         if self.torrent_popup == true {
-            let vertical = &Layout::vertical([Constraint::Min(5), Constraint::Length(14), Constraint::Length(4)]);
+            let vertical = &Layout::vertical([Constraint::Min(5), Constraint::Length(17), Constraint::Length(4)]);
             rects = vertical.split(frame.area());
             footer = 2;
         } else {
@@ -150,7 +152,7 @@ impl App {
 
         // Show torrent info footer
         if self.torrent_popup == true  && self.torrents.len() > 0 {
-            self.render_selected_torrent(frame, rects[1]);
+            self.render_torrent_into(frame, rects[1]);
         }  else {
             self.torrent_popup = false;
         }

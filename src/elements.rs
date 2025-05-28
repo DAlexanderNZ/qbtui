@@ -1,9 +1,10 @@
-use crate::{App, CurentInput};
+use crate::{App, CurentInput, input::SelectedInfoTab};
 use ratatui::{
     layout::{Constraint, Alignment, Position, Layout, Rect},
     style::{Color, Modifier, Style, Stylize},
     text::{Line, Text},
-    widgets::{Block, BorderType, Borders, Cell, Paragraph, Row, Table, Scrollbar, ScrollbarOrientation,  Gauge},
+    widgets::{Block, BorderType, Borders, Cell, Gauge, Paragraph, 
+        Row, Scrollbar, ScrollbarOrientation, Table, Tabs},
     Frame
 };
 
@@ -158,7 +159,7 @@ impl App {
 
     /// Renders detailed information about the selected torrent in a footer.
     /// The popup contains a progress bar, torrent transfer info, and file/torrent info.
-    pub fn render_selected_torrent(&self, frame: &mut Frame, area: Rect) {
+    fn render_selected_torrent(&self, frame: &mut Frame, area: Rect) {
         let vertical = Layout::vertical(
             [Constraint::Length(3), Constraint::Length(7), Constraint::Length(4)]
         );
@@ -258,5 +259,43 @@ impl App {
         .block(block.clone().title("Information").title_alignment(Alignment::Center));
         frame.render_widget(t, rects[2]);
         
+    }
+
+    fn render_info_tabs(&self, frame: &mut Frame, area: Rect) {
+        let block = Block::bordered();
+        let titles = [
+            "Details",
+            "Files",
+            "Trackers",
+            "Peers",
+        ];
+        let index = self.info_tab as usize;
+        //print!("[INFO] Rendering info tab: {}", index);
+        let tab = Tabs::new(titles)
+        .block(block)
+        .highlight_style(Color::LightRed)
+        .select(index);
+        frame.render_widget(tab, area);
+    }
+
+    /// Renders the selection tab for the torrent info section and calls the appropriate render function based on the selected tab.
+    pub fn render_torrent_into(&self, frame: &mut Frame, area: Rect) {
+        let vertical = Layout::vertical(
+            [Constraint::Min(3), Constraint::Length(14)]
+        );
+        let rects = vertical.split(area);
+        self.render_info_tabs(frame, rects[0]);
+        match self.info_tab {
+            SelectedInfoTab::Details => {
+                self.render_selected_torrent(frame, rects[1]);
+            },
+            _ => {
+                // Placeholder for other tabs
+                let placeholder = Paragraph::new("This tab is not implemented yet.")
+                    .block(Block::bordered().title("Tab Not Implemented"))
+                    .style(Style::new().fg(Color::White).bg(Color::Black));
+                frame.render_widget(placeholder, rects[1]);
+            }
+        }
     }
 }

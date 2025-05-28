@@ -57,6 +57,52 @@ impl CurentInput {
     }
 }
 
+#[derive(Default, Debug, Clone, Copy)]
+pub enum SelectedInfoTab {
+    #[default]
+    Details,
+    Files,
+    Trackers,
+    Peers,
+}
+
+impl SelectedInfoTab {
+    fn to_index(self) -> usize {
+        match self {
+            SelectedInfoTab::Details => 0,
+            SelectedInfoTab::Files => 1,
+            SelectedInfoTab::Trackers => 2,
+            SelectedInfoTab::Peers => 3,
+        }
+    }
+
+    fn from_index(i: usize) -> Self {
+        match i {
+            0 => SelectedInfoTab::Details,
+            1 => SelectedInfoTab::Files,
+            2 => SelectedInfoTab::Trackers,
+            3 => SelectedInfoTab::Peers,
+            _ => panic!("Index out of range"),
+        }
+    }
+
+    fn next(&mut self) {
+        let current_index = self.to_index();
+        let new_index = (current_index + 1) % 4; // Wrap around after 3
+        *self = Self::from_index(new_index);
+    }
+
+    fn previous(&mut self) {
+        let current_index = self.to_index();
+        let new_index = if current_index == 0 {
+            3 // Wrap around to the last tab
+        } else {
+            (current_index - 1) % 4
+        };
+        *self = Self::from_index(new_index);
+    }
+}
+
 impl App {
     /// Reads the crossterm events and updates the state of [`App`].
     pub async fn handle_crossterm_events(&mut self) -> Result<()> {
@@ -200,7 +246,9 @@ impl App {
     /// In Config mode, it moves right the config inputs.
     fn next_column(&mut self) {
         match self.input_mode {
-            InputMode::Normal => self.state.select_next_column(),
+            InputMode::Normal => {
+                self.info_tab.next();
+            },
             InputMode::Config => { 
                 let input = self.current_input();
                 let cursor_moved_right = self.charcter_index.saturating_add(1);
@@ -214,7 +262,11 @@ impl App {
     /// In Config mode, it moves left the config inputs.
     fn previous_column(&mut self) {
         match self.input_mode {
-            InputMode::Normal => self.state.select_previous_column(),
+            InputMode::Normal => {
+                if self.torrent_popup == true {
+                    self.info_tab.previous();
+                }
+            },
             InputMode::Config => { 
                 let input = self.current_input();
                 let cursor_moved_left = self.charcter_index.saturating_sub(1);
