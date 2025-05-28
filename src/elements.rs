@@ -7,6 +7,7 @@ use ratatui::{
         Row, Scrollbar, ScrollbarOrientation, Table, Tabs},
     Frame
 };
+use qbit_rs::model::TrackerStatus;
 
 const TABLE_ITEM_HEIGHT: usize = 2;
 const INFO_TEXT: [&str; 2] = [
@@ -72,7 +73,7 @@ impl App {
     /// | Name | Size | Bytes Downloaded | Progress | State | DL Speed | UL Speed | ETA | Ratio |
     /// | name | size | downloaded | progress | state | dlspeed | upspeed | eta | ratio |
     pub fn render_torrents_table(&mut self, frame: &mut Frame, area: Rect) {
-        let header = ["Name", "Size", "Bytes Downloaded", "Progress", "State" ,"DL Speed", "UL Speed", "ETA", "Ratio"]
+        let header = ["Name", "Size", "Bytes DL", "Progress", "State" ,"DL Speed", "UL Speed", "ETA", "Ratio"]
             .into_iter()
             .map(Cell::from)
             .collect::<Row>()
@@ -155,6 +156,49 @@ impl App {
         // Render the scrollbar on the right side of the table
         self.scroll_state = self.scroll_state.content_length(self.torrents.len()).viewport_content_length(TABLE_ITEM_HEIGHT);
         frame.render_stateful_widget(Scrollbar::new(ScrollbarOrientation::VerticalRight), area, &mut self.scroll_state);
+    }
+
+    /// Renders the selection tab for the torrent info section and calls the appropriate render function based on the selected tab.
+    pub fn render_torrent_into(&self, frame: &mut Frame, area: Rect) {
+        let vertical = Layout::vertical(
+            [Constraint::Min(3), Constraint::Length(14)]
+        );
+        let rects = vertical.split(area);
+        self.render_info_tabs(frame, rects[0]);
+        match self.info_tab {
+            SelectedInfoTab::Details => {
+                self.render_selected_torrent(frame, rects[1]);
+            },
+            SelectedInfoTab::Trackers => {
+                self.render_torrent_trackers(frame, rects[1]);
+            },
+            _ => {
+                // Placeholder for other tabs
+                let placeholder = Paragraph::new("This tab is not implemented yet.")
+                    .block(Block::bordered().title("Tab Not Implemented"))
+                    .style(Style::new().fg(Color::White).bg(Color::Black));
+                frame.render_widget(placeholder, rects[1]);
+            }
+        }
+    }
+
+    /// Renders the option tabs for the torrent info section.
+    /// They are the same as SelectInfoTab enum.
+    fn render_info_tabs(&self, frame: &mut Frame, area: Rect) {
+        let block = Block::bordered();
+        let titles = [
+            "Details",
+            "Files",
+            "Trackers",
+            "Peers",
+        ];
+        let index = self.info_tab as usize;
+        //print!("[INFO] Rendering info tab: {}", index);
+        let tab = Tabs::new(titles)
+        .block(block)
+        .highlight_style(Color::LightRed)
+        .select(index);
+        frame.render_widget(tab, area);
     }
 
     /// Renders detailed information about the selected torrent in a footer.
@@ -261,41 +305,44 @@ impl App {
         
     }
 
-    fn render_info_tabs(&self, frame: &mut Frame, area: Rect) {
-        let block = Block::bordered();
-        let titles = [
-            "Details",
-            "Files",
-            "Trackers",
-            "Peers",
-        ];
-        let index = self.info_tab as usize;
-        //print!("[INFO] Rendering info tab: {}", index);
-        let tab = Tabs::new(titles)
-        .block(block)
-        .highlight_style(Color::LightRed)
-        .select(index);
-        frame.render_widget(tab, area);
-    }
-
-    /// Renders the selection tab for the torrent info section and calls the appropriate render function based on the selected tab.
-    pub fn render_torrent_into(&self, frame: &mut Frame, area: Rect) {
-        let vertical = Layout::vertical(
-            [Constraint::Min(3), Constraint::Length(14)]
-        );
-        let rects = vertical.split(area);
-        self.render_info_tabs(frame, rects[0]);
-        match self.info_tab {
-            SelectedInfoTab::Details => {
-                self.render_selected_torrent(frame, rects[1]);
-            },
-            _ => {
-                // Placeholder for other tabs
-                let placeholder = Paragraph::new("This tab is not implemented yet.")
-                    .block(Block::bordered().title("Tab Not Implemented"))
-                    .style(Style::new().fg(Color::White).bg(Color::Black));
-                frame.render_widget(placeholder, rects[1]);
-            }
+    /// Renders all the trackers for the selected torrent.
+    fn render_torrent_trackers(&self, frame: &mut Frame, area: Rect) {
+        let header = ["URL", "Status", "Peers", "Seeds"]
+            .into_iter()
+            .map(Cell::from)
+            .collect::<Row>()
+            .style(Style::default().bold().fg(Color::White).bg(Color::Black))
+            .height(1);
+        let mut rows = vec![];
+        //TODO: Async call to api.get_torrent_trackers for current selected torrent...
+        for tracker in self.torrent_trackers.iter() {
+            let color = match tracker.status {
+                TrackerStatus::Working => Color::Green,
+                TrackerStatus::NotWorking => Color::Red,
+                TrackerStatus::NotContacted => Color::Yellow,
+                _ => Color::DarkGray
+            };
+            let item: Row<'_> = [
+                tracker.url.clone(),
+                self.get_tracker_status(tracker.status),
+                format!("{}", tracker.num_peers),
+                format!("{}", tracker.num_seeds),
+            ]
+            .into_iter()
+            .map(|content| Cell::new(content))
+            .collect::<Row>()
+            .style(Style::default().fg(Color::White).bg(color));
+            rows.push(item);
         }
+        let widths = [
+            Constraint::Percentage(70), // URL
+            Constraint::Percentage(10), // Status
+            Constraint::Percentage(10), // Peers
+            Constraint::Percentage(10), // Seeds
+        ];
+        let t = Table::new(rows, widths)
+            .header(header)
+            .block(Block::default().borders(Borders::ALL));
+        frame.render_widget(t, area);
     }
 }

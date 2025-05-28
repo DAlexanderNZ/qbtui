@@ -30,6 +30,18 @@ impl App {
         display_state
     }
 
+    /// Takes the tracker state returned from qbittorrent api and converts it to a human readable string.
+    pub fn get_tracker_status(&self, status: qbit_rs::model::TrackerStatus) -> String {
+        let display_state= match status {
+            qbit_rs::model::TrackerStatus::Disabled => "Disabled".to_string(),
+            qbit_rs::model::TrackerStatus::NotContacted => "Not Contacted".to_string(),
+            qbit_rs::model::TrackerStatus::Working => "Working".to_string(),
+            qbit_rs::model::TrackerStatus::Updating => "Updating".to_string(),
+            qbit_rs::model::TrackerStatus::NotWorking => "Not Working".to_string(),
+        };
+        display_state
+    }
+
     /// Helper to return a centered rect given x and y percentages.
     pub fn popup_area(&self, area: Rect, percent_x: u16, percent_y: u16) -> Rect {
         let horizontal = Layout::horizontal([Constraint::Percentage(percent_x)]).flex(Flex::Center); 

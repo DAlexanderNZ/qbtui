@@ -5,7 +5,7 @@ use ratatui::{
     widgets::{TableState, ScrollbarState}, 
     DefaultTerminal, Frame
 };
-use qbit_rs::{model::{GetTorrentListArg, TorrentFilter}, Qbit};
+use qbit_rs::{model::{GetTorrentListArg, TorrentFilter, Tracker}, Qbit};
 use qbit_rs::model::Credential;
 use serde::{Serialize, Deserialize};
 use confy;
@@ -96,6 +96,7 @@ pub struct App {
     cfg: AppConfig,
     // Torrent data storage
     torrents: Vec<qbit_rs::model::Torrent>,
+    torrent_trackers: Vec<Tracker>,
     refresh_torrents: bool,
     // Torrent info popup
     torrent_popup: bool,
