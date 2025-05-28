@@ -8,17 +8,12 @@ fn clamp_cursor(new_cursor_pos: usize, input: &String) -> usize {
 }
 
 /// Stores the currently selected field being edited.
-#[derive(Debug, Copy, Clone)]
+#[derive(Default, Debug, Copy, Clone)]
 pub enum CurentInput {
+    #[default]
     ApiUrl,
     Username,
     Password
-}
-
-impl ::std::default::Default for CurentInput {
-    fn default() -> Self {
-        Self::ApiUrl
-    }
 }
 
 impl CurentInput {
@@ -57,6 +52,7 @@ impl CurentInput {
     }
 }
 
+/// Represents the currently selected tab for torrent information display.
 #[derive(Default, Debug, Clone, Copy)]
 pub enum SelectedInfoTab {
     #[default]
@@ -88,7 +84,7 @@ impl SelectedInfoTab {
 
     fn next(&mut self) {
         let current_index = self.to_index();
-        let new_index = (current_index + 1) % 4; // Wrap around after 3
+        let new_index = (current_index + 1) % 4; // Wrap around last tab
         *self = Self::from_index(new_index);
     }
 
