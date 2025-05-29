@@ -1,10 +1,26 @@
-use crate::{App, InputMode, Message};
+use crate::{App, Message};
 use color_eyre::Result;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use futures::{FutureExt, StreamExt};
 
 fn clamp_cursor(new_cursor_pos: usize, input: &String) -> usize {
     new_cursor_pos.clamp(0, input.chars().count())
+}
+
+#[derive(Default, Debug)]
+pub enum InputMode {
+    #[default]
+    Normal,
+    Config,
+}
+
+impl InputMode {
+    pub fn toggle_config(&mut self) {
+        match self {
+            InputMode::Normal => *self = InputMode::Config,
+            InputMode::Config => *self = InputMode::Normal,
+        }
+    }
 }
 
 /// Stores the currently selected field being edited.
@@ -101,7 +117,7 @@ impl SelectedInfoTab {
     }
 
     /// Return a message for updating the newly selected tab.
-    fn update_selected(self) -> Option<Message> {
+    pub fn update_selected(self) -> Option<Message> {
         match self {
             SelectedInfoTab::Trackers => Some(Message::TorrentTrackers),
             SelectedInfoTab::Peers => Some(Message::TorrentPeers),
@@ -141,7 +157,7 @@ impl App {
         let mut msg: Option<Message> = None;
         // Global keys
         match (key.modifiers, key.code) {
-            (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => self.quit(),
+            (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => msg = Some(Message::Quit),
             _ => {}
         }
 
@@ -149,15 +165,14 @@ impl App {
         match self.input_mode {
             InputMode::Normal => {
                 match (key.modifiers, key.code) {
-                    (_, KeyCode::Esc) => self.quit(),
+                    (_, KeyCode::Esc) => msg = Some(Message::Quit),
                     (_, KeyCode::Char('r')) => msg = Some(Message::RefreshTorrents),
                     // Open/Close edit config popup
                     (KeyModifiers::CONTROL, KeyCode::Char('e')) => {
-                        self.cfg_popup = !self.cfg_popup;
-                        self.input_mode = InputMode::Config;
+                        msg = Some(Message::DisplayCfgEditor);
                         self.reset_cursor();        
                     },
-                    (_, KeyCode::Tab) => self.torrent_popup = !self.torrent_popup,
+                    (_, KeyCode::Tab) => msg = Some(Message::DisplayTorrentInfo),
                     // Moving about the table
                     (_, KeyCode::Char('j') | KeyCode::Down) => msg = self.next_row(),
                     (_, KeyCode::Char('k') | KeyCode::Up) => msg = self.previous_row(),
@@ -178,8 +193,7 @@ impl App {
                     },
                     (KeyModifiers::CONTROL, KeyCode::Char('s')) => {
                         self.save_cfg = true;
-                        msg = Some(Message::RefreshTorrents);
-                        self.input_mode = InputMode::Normal;
+                        msg = Some(Message::DisplayCfgEditor);
                     },
                     (_, KeyCode::Char(to_insert)) => self.enter_char(to_insert),
                     (_, KeyCode::Backspace) => self.delete_char(),
@@ -338,7 +352,7 @@ impl App {
         }
     }
 
-    /// Resets the charcter index (cursor) to the end of the current input field.
+    /// Resets the charcter index cursor to the end of the current input field.
     pub fn reset_cursor(&mut self) {
         self.charcter_index = self.current_input().chars().count();
     }

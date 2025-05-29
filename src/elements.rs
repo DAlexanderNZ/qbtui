@@ -348,7 +348,10 @@ impl App {
         frame.render_widget(t, area);
     }
 
+    /// Renders the curent peers returned by the qBittorrent API.
     fn render_torrent_peers(&self, frame: &mut Frame, area: Rect) {
+        // TODO: Allow user selected sorting of the table.
+        // TODO: Add scrolling to the table and work though context switching with torrents table scrolling.
         let header = [
             "IP", 
             "Link", 

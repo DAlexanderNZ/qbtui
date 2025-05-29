@@ -10,7 +10,7 @@ use serde::{Serialize, Deserialize};
 use confy;
 // Local imports
 mod input;
-use input::{CurentInput, SelectedInfoTab};
+use input::{CurentInput, SelectedInfoTab, InputMode};
 mod elements;
 mod helpers;
 mod api;
@@ -42,18 +42,6 @@ async fn main() -> color_eyre::Result<()> {
     let result = App::new().run(terminal).await;
     ratatui::restore();
     result
-}
-
-#[derive(Debug)]
-enum InputMode {
-    Normal,
-    Config,
-}
-
-impl ::std::default::Default for InputMode {
-    fn default() -> Self {
-        Self::Normal
-    }
 }
 
 #[derive(Debug, Default)]
@@ -109,11 +97,6 @@ impl App {
         Ok(())
     }
 
-    /// Renders the user interface.
-    ///
-    /// This is where you add new widgets. See the following resources for more information:
-    /// - <https://docs.rs/ratatui/latest/ratatui/widgets/index.html>
-    /// - <https://github.com/ratatui/ratatui/tree/master/examples>
     fn draw(&mut self, frame: &mut Frame) {
         let rects;
         let footer: usize;
@@ -152,19 +135,9 @@ impl App {
             self.render_cfg_popup(frame, area);
 
             if self.save_cfg == true {
-                self.cfg = self.input.clone();
-                self.save_cfg = false;
-                match confy::store("qbtui", None, &self.cfg) {
-                    Ok(_) => self.cfg_popup = false,
-                    Err(err) => eprintln!("Error creating config file: {}", err),
-                }
+                
             }
         } 
-    }
-
-    /// Set running to false to quit the application.
-    fn quit(&mut self) {
-        self.running = false;
     }
 }
 
