@@ -148,8 +148,8 @@ impl App {
                     },
                     (_, KeyCode::Tab) => self.torrent_popup = !self.torrent_popup,
                     // Moving about the table
-                    (_, KeyCode::Char('j') | KeyCode::Down) => self.next_row(),
-                    (_, KeyCode::Char('k') | KeyCode::Up) => self.previous_row(),
+                    (_, KeyCode::Char('j') | KeyCode::Down) => msg = self.next_row(),
+                    (_, KeyCode::Char('k') | KeyCode::Up) => msg = self.previous_row(),
                     (_, KeyCode::Char('h') | KeyCode::Left) => msg = self.previous_column(),
                     (_, KeyCode::Char('l') | KeyCode::Right) => msg = self.next_column(),
                     // Delete input char
@@ -172,8 +172,8 @@ impl App {
                     },
                     (_, KeyCode::Char(to_insert)) => self.enter_char(to_insert),
                     (_, KeyCode::Backspace) => self.delete_char(),
-                    (_, KeyCode::Down | KeyCode::Enter) => self.next_row(),
-                    (_, KeyCode::Up) => self.previous_row(),
+                    (_, KeyCode::Down | KeyCode::Enter) => msg = self.next_row(),
+                    (_, KeyCode::Up) => msg = self.previous_row(),
                     (_, KeyCode::Left) => msg = self.previous_column(),
                     (_, KeyCode::Right) => msg = self.next_column(),
                     _ => {}   
@@ -186,7 +186,7 @@ impl App {
     /// Move the selection down in the InputMode context.
     /// In Normal mode, it moves down the torrent table.
     /// In Config mode, it moves down the config inputs.
-    fn next_row(&mut self) {
+    fn next_row(&mut self) -> Option<Message> {
         match self.input_mode {
             InputMode::Normal => {
                 let i =  match self.state.selected() {
@@ -201,6 +201,10 @@ impl App {
                 };
                 self.state.select(Some(i));
                 self.scroll_state = self.scroll_state.position(i);
+                // TODO: Also check if the info tabs are being displayed at all.
+                if self.info_tab == SelectedInfoTab::Trackers {
+                    return Some(Message::TorrentTrackers);
+                }
             },
             InputMode::Config => {
                 self.current_input.shift(1);
@@ -208,12 +212,13 @@ impl App {
                 self.charcter_index = clamp_cursor(input.len(), input);
             }
         }
+        None
     }
 
     /// Move the selection up in the InputMode context.
     /// In Normal mode, it moves up the torrent table.
     /// In Config mode, it moves up the config inputs.
-    fn previous_row(&mut self) {
+    fn previous_row(&mut self) -> Option<Message> {
         match self.input_mode {
             InputMode::Normal => {
                 let i = match self.state.selected() {
@@ -228,6 +233,9 @@ impl App {
                 };
                 self.state.select(Some(i));
                 self.scroll_state = self.scroll_state.position(i);
+                if self.info_tab == SelectedInfoTab::Trackers {
+                    return Some(Message::TorrentTrackers);
+                }
             },
             InputMode::Config => {
                 self.current_input.shift(-1);
@@ -235,6 +243,7 @@ impl App {
                 self.charcter_index = clamp_cursor(input.len(), input);
             }
         }
+        None
     }
 
     /// Move the selection right in the InputMode context.
