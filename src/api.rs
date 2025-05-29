@@ -42,4 +42,19 @@ impl App {
         Ok(())
     }
 
+    pub async fn get_torrent_peers(&mut self) -> Result<()> {
+        let api = self.api();
+        let torrent = self.torrents.get(self.state.selected().unwrap_or(0)).unwrap();
+        let hash = torrent.hash.clone().unwrap();
+        // From the qBittorrent API documentation 5.0:
+        // Response ID. If not provided, rid=0 will be assumed. 
+        // If the given rid is different from the one of last server reply, 
+        // full_update will be true (see the server reply details for more info)
+        let peers = api.get_torrent_peers(hash, None).await;
+        match peers {
+            Ok(peers) => self.torrent_peers = Some(peers),
+            Err(_err) => self.torrent_peers = None,
+        }
+        Ok(())
+    }
 }

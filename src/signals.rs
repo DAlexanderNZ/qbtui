@@ -3,6 +3,7 @@ use crate::App;
 pub enum Message {
     RefreshTorrents,
     TorrentTrackers,
+    TorrentPeers,
 }
 
 
@@ -14,6 +15,9 @@ impl App {
             }
             Message::TorrentTrackers => {
                 let _ = self.get_torrent_trackers().await;
+            }
+            Message::TorrentPeers => {
+                let _ = self.get_torrent_peers().await;
             }
         }
         None

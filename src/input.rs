@@ -82,13 +82,14 @@ impl SelectedInfoTab {
         }
     }
 
-    fn next(&mut self) {
+    fn next(&mut self) -> Option<Message> {
         let current_index = self.to_index();
         let new_index = (current_index + 1) % 4; // Wrap around last tab
         *self = Self::from_index(new_index);
+        self.update_selected()
     }
 
-    fn previous(&mut self) {
+    fn previous(&mut self) -> Option<Message> {
         let current_index = self.to_index();
         let new_index = if current_index == 0 {
             3 // Wrap around to the last tab
@@ -96,6 +97,16 @@ impl SelectedInfoTab {
             (current_index - 1) % 4
         };
         *self = Self::from_index(new_index);
+        self.update_selected()
+    }
+
+    /// Return a message for updating the newly selected tab.
+    fn update_selected(self) -> Option<Message> {
+        match self {
+            SelectedInfoTab::Trackers => Some(Message::TorrentTrackers),
+            SelectedInfoTab::Peers => Some(Message::TorrentPeers),
+            _ => None,
+        }            
     }
 }
 
@@ -201,9 +212,8 @@ impl App {
                 };
                 self.state.select(Some(i));
                 self.scroll_state = self.scroll_state.position(i);
-                // TODO: Also check if the info tabs are being displayed at all.
-                if self.info_tab == SelectedInfoTab::Trackers {
-                    return Some(Message::TorrentTrackers);
+                if self.torrent_popup {
+                    return self.info_tab.update_selected();
                 }
             },
             InputMode::Config => {
@@ -233,8 +243,8 @@ impl App {
                 };
                 self.state.select(Some(i));
                 self.scroll_state = self.scroll_state.position(i);
-                if self.info_tab == SelectedInfoTab::Trackers {
-                    return Some(Message::TorrentTrackers);
+                if self.torrent_popup {
+                    return self.info_tab.update_selected();
                 }
             },
             InputMode::Config => {
@@ -252,11 +262,7 @@ impl App {
     fn next_column(&mut self) -> Option<Message> {
         match self.input_mode {
             InputMode::Normal => {
-                self.info_tab.next();
-                if self.info_tab == SelectedInfoTab::Trackers {
-                    return Some(Message::TorrentTrackers);
-                }
-                
+                return self.info_tab.next();         
             },
             InputMode::Config => { 
                 let input = self.current_input();
@@ -273,12 +279,7 @@ impl App {
     fn previous_column(&mut self) -> Option<Message> {
         match self.input_mode {
             InputMode::Normal => {
-                if self.torrent_popup == true {
-                    self.info_tab.previous();
-                    if self.info_tab == SelectedInfoTab::Trackers {
-                        return Some(Message::TorrentTrackers);
-                    }
-                }
+                    return self.info_tab.previous();
             },
             InputMode::Config => { 
                 let input = self.current_input();

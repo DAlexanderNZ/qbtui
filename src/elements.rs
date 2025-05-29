@@ -172,6 +172,9 @@ impl App {
             SelectedInfoTab::Trackers => {
                 self.render_torrent_trackers(frame, rects[1]);
             },
+            SelectedInfoTab::Peers => {
+                self.render_torrent_peers(frame, rects[1]);
+            },
             _ => {
                 // Placeholder for other tabs
                 let placeholder = Paragraph::new("This tab is not implemented yet.")
@@ -314,7 +317,6 @@ impl App {
             .style(Style::default().bold().fg(Color::White).bg(Color::Black))
             .height(1);
         let mut rows = vec![];
-        //TODO: Async call to api.get_torrent_trackers for current selected torrent...
         for tracker in self.torrent_trackers.iter() {
             let color = match tracker.status {
                 TrackerStatus::Working => Color::Green,
@@ -339,6 +341,61 @@ impl App {
             Constraint::Percentage(10), // Status
             Constraint::Percentage(10), // Peers
             Constraint::Percentage(10), // Seeds
+        ];
+        let t = Table::new(rows, widths)
+            .header(header)
+            .block(Block::default().borders(Borders::ALL));
+        frame.render_widget(t, area);
+    }
+
+    fn render_torrent_peers(&self, frame: &mut Frame, area: Rect) {
+        let header = [
+            "IP", 
+            "Link", 
+            "Country", 
+            "Bytes DL", 
+            "Bytes UL",
+            "Progress", 
+            "DL Speed", 
+            "UL Speed", 
+            "Client"
+            ]
+            .into_iter()
+            .map(Cell::from)
+            .collect::<Row>()
+            .style(Style::default().bold().fg(Color::White).bg(Color::Black))
+            .height(1);
+        let mut rows = vec![];
+        if let Some(peers) = &self.torrent_peers {
+            for (addr, peer) in peers.peers.as_ref().unwrap().iter() {
+                let item: Row<'_> = [
+                    format!("{}", addr),
+                    format!("{}", peer.connection.as_ref().unwrap()),
+                    format!("{}", peer.country.as_ref().unwrap()),
+                    format!("{}", self.format_bytes(peer.downloaded.unwrap_or(0) as i64)),
+                    format!("{}", self.format_bytes(peer.uploaded.unwrap_or(0) as i64)),
+                    format!("{:.2}%", peer.progress.unwrap_or(0.0) * 100.0),
+                    format!("{}", self.format_rate(peer.dl_speed.unwrap_or(0) as i64)),
+                    format!("{}", self.format_rate(peer.up_speed.unwrap_or(0) as i64)),
+                    format!("{}", peer.client.as_ref().unwrap())
+                ]
+                .into_iter()
+                .map(|content| Cell::new(content))
+                .collect::<Row>()
+                .style(Style::default().fg(Color::White));
+                rows.push(item);
+            }
+        }
+        let widths = [
+            Constraint::Percentage(15), // IP
+            Constraint::Percentage(10), // Link
+            Constraint::Percentage(10), // Country
+            Constraint::Percentage(10), // Bytes DL
+            Constraint::Percentage(10), // Bytes UL
+            Constraint::Percentage(10), // Progress
+            Constraint::Percentage(10), // DL Speed
+            Constraint::Percentage(10), // UL Speed
+            Constraint::Percentage(15), // Client
         ];
         let t = Table::new(rows, widths)
             .header(header)
