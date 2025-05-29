@@ -1,4 +1,4 @@
-use crate::{App, InputMode};
+use crate::{App, InputMode, Message};
 use color_eyre::Result;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use futures::{FutureExt, StreamExt};
@@ -53,7 +53,7 @@ impl CurentInput {
 }
 
 /// Represents the currently selected tab for torrent information display.
-#[derive(Default, Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy, PartialEq)]
 pub enum SelectedInfoTab {
     #[default]
     Details,
@@ -101,7 +101,7 @@ impl SelectedInfoTab {
 
 impl App {
     /// Reads the crossterm events and updates the state of [`App`].
-    pub async fn handle_crossterm_events(&mut self) -> Result<()> {
+    pub async fn handle_crossterm_events(&mut self) -> Result<Option<Message>> {
         tokio::select! {
             event = self.event_stream.next().fuse() => {
                 match event {
@@ -109,8 +109,8 @@ impl App {
                         match evt {
                             Event::Key(key)
                                 if key.kind == KeyEventKind::Press
-                                    => self.on_key_event(key),
-                            Event::Mouse(_) => {}
+                                    => return Ok(self.on_key_event(key)),
+                            Event::Mouse(_) => {},
                             Event::Resize(_, _) => {}
                             _ => {}
                         }
@@ -122,11 +122,12 @@ impl App {
                 // Sleep for a short duration to avoid busy waiting.
             }
         }
-        Ok(())
+        Ok(None)
     }
 
     /// Handles the key events and updates the state of [`App`].
-    fn on_key_event(&mut self, key: KeyEvent) {
+    fn on_key_event(&mut self, key: KeyEvent) -> Option<Message>{
+        let mut msg: Option<Message> = None;
         // Global keys
         match (key.modifiers, key.code) {
             (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => self.quit(),
@@ -138,9 +139,7 @@ impl App {
             InputMode::Normal => {
                 match (key.modifiers, key.code) {
                     (_, KeyCode::Esc) => self.quit(),
-                    (_, KeyCode::Char('r')) => {
-                        self.refresh_torrents = true;
-                    },
+                    (_, KeyCode::Char('r')) => msg = Some(Message::RefreshTorrents),
                     // Open/Close edit config popup
                     (KeyModifiers::CONTROL, KeyCode::Char('e')) => {
                         self.cfg_popup = !self.cfg_popup;
@@ -151,8 +150,8 @@ impl App {
                     // Moving about the table
                     (_, KeyCode::Char('j') | KeyCode::Down) => self.next_row(),
                     (_, KeyCode::Char('k') | KeyCode::Up) => self.previous_row(),
-                    (_, KeyCode::Char('h') | KeyCode::Left) => self.previous_column(),
-                    (_, KeyCode::Char('l') | KeyCode::Right) => self.next_column(),
+                    (_, KeyCode::Char('h') | KeyCode::Left) => msg = self.previous_column(),
+                    (_, KeyCode::Char('l') | KeyCode::Right) => msg = self.next_column(),
                     // Delete input char
                     (_, KeyCode::Backspace) => self.delete_char(),            
                     _ => {}
@@ -168,19 +167,20 @@ impl App {
                     },
                     (KeyModifiers::CONTROL, KeyCode::Char('s')) => {
                         self.save_cfg = true;
-                        self.refresh_torrents = true;
+                        msg = Some(Message::RefreshTorrents);
                         self.input_mode = InputMode::Normal;
                     },
                     (_, KeyCode::Char(to_insert)) => self.enter_char(to_insert),
                     (_, KeyCode::Backspace) => self.delete_char(),
                     (_, KeyCode::Down | KeyCode::Enter) => self.next_row(),
                     (_, KeyCode::Up) => self.previous_row(),
-                    (_, KeyCode::Left) => self.previous_column(),
-                    (_, KeyCode::Right) => self.next_column(),
+                    (_, KeyCode::Left) => msg = self.previous_column(),
+                    (_, KeyCode::Right) => msg = self.next_column(),
                     _ => {}   
                 }
             },
         }
+        msg
     }
 
     /// Move the selection down in the InputMode context.
@@ -240,10 +240,14 @@ impl App {
     /// Move the selection right in the InputMode context.
     /// In Normal mode, it moves right the torrent table.
     /// In Config mode, it moves right the config inputs.
-    fn next_column(&mut self) {
+    fn next_column(&mut self) -> Option<Message> {
         match self.input_mode {
             InputMode::Normal => {
                 self.info_tab.next();
+                if self.info_tab == SelectedInfoTab::Trackers {
+                    return Some(Message::TorrentTrackers);
+                }
+                
             },
             InputMode::Config => { 
                 let input = self.current_input();
@@ -251,16 +255,20 @@ impl App {
                 self.charcter_index = clamp_cursor(cursor_moved_right, input); 
             }
         }
+        None
     }
 
     /// Move the selection left in the InputMode context.
     /// In Normal mode, it moves left the torrent table.
     /// In Config mode, it moves left the config inputs.
-    fn previous_column(&mut self) {
+    fn previous_column(&mut self) -> Option<Message> {
         match self.input_mode {
             InputMode::Normal => {
                 if self.torrent_popup == true {
                     self.info_tab.previous();
+                    if self.info_tab == SelectedInfoTab::Trackers {
+                        return Some(Message::TorrentTrackers);
+                    }
                 }
             },
             InputMode::Config => { 
@@ -269,6 +277,7 @@ impl App {
                 self.charcter_index = clamp_cursor(cursor_moved_left, input);
             }
         }
+        None
     }
 
     /// Returns a static reference to the currently selected input field.

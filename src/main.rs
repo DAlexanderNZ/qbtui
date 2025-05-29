@@ -5,8 +5,7 @@ use ratatui::{
     widgets::{TableState, ScrollbarState}, 
     DefaultTerminal, Frame
 };
-use qbit_rs::{model::{GetTorrentListArg, TorrentFilter, Tracker}, Qbit};
-use qbit_rs::model::Credential;
+use qbit_rs::model::Tracker;
 use serde::{Serialize, Deserialize};
 use confy;
 // Local imports
@@ -14,6 +13,9 @@ mod input;
 use input::{CurentInput, SelectedInfoTab};
 mod elements;
 mod helpers;
+mod api;
+mod signals;
+use signals::Message;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct AppConfig {
@@ -31,27 +33,6 @@ impl ::std::default::Default for AppConfig {
         }
     }
 }
-
-async fn get_torrents(credential: Credential, api_url: &str) -> Result<Vec<qbit_rs::model::Torrent>> {
-    
-    let api = Qbit::new(api_url, credential);
-    let arg = GetTorrentListArg {
-        filter: Some(TorrentFilter::All),
-        category: None,
-        tag: None,
-        sort: None,
-        reverse: None,
-        limit: Some(10),
-        offset: None,
-        hashes: None,
-    };
-    let torrents = api.get_torrent_list(arg).await;
-    match torrents {
-        Ok(torrents) => Ok(torrents),
-        Err(e) => Err(e.into())
-    }
-}
-
 
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {
@@ -97,7 +78,6 @@ pub struct App {
     // Torrent data storage
     torrents: Vec<qbit_rs::model::Torrent>,
     torrent_trackers: Vec<Tracker>,
-    refresh_torrents: bool,
     // Torrent info popup
     torrent_popup: bool,
     info_tab: SelectedInfoTab,
@@ -119,11 +99,10 @@ impl App {
         self.get_torrents().await?;
         while self.running {
             terminal.draw(|frame| self.draw(frame))?;
-            self.handle_crossterm_events().await?;
+            let mut msg = self.handle_crossterm_events().await?;
             // TODO: With time delay regularly refresh the torrents.
-            if self.refresh_torrents {
-                self.get_torrents().await?;
-                self.refresh_torrents = false;
+            while msg.is_some() {
+                msg = self.update(msg.unwrap()).await;
             }
         }
         Ok(())
@@ -180,20 +159,6 @@ impl App {
                 }
             }
         } 
-    }
-
-
-    /// Fetches torrent list from qbittorrent api.
-    pub async fn get_torrents(&mut self) -> Result<()> {
-        let credential = Credential::new(&self.cfg.username, &self.cfg.password);
-        let api_url = &self.cfg.api_url;
-        let torrents = get_torrents(credential, api_url).await;
-        match torrents {
-            Ok(torrents) => self.torrents = torrents,
-            // TODO: Create a popup with the error message.
-            Err(_err) => {},
-        }
-        Ok(())
     }
 
     /// Set running to false to quit the application.
