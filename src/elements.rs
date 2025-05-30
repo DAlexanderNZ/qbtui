@@ -390,15 +390,15 @@ impl App {
             }
         }
         let widths = [
-            Constraint::Percentage(15), // IP
-            Constraint::Percentage(10), // Link
-            Constraint::Percentage(10), // Country
-            Constraint::Percentage(10), // Bytes DL
-            Constraint::Percentage(10), // Bytes UL
-            Constraint::Percentage(10), // Progress
-            Constraint::Percentage(10), // DL Speed
-            Constraint::Percentage(10), // UL Speed
-            Constraint::Percentage(15), // Client
+            Constraint::Percentage(24), // IP
+            Constraint::Percentage(4), // Link
+            Constraint::Percentage(19), // Country
+            Constraint::Percentage(7), // Bytes DL
+            Constraint::Percentage(7), // Bytes UL
+            Constraint::Percentage(7), // Progress
+            Constraint::Percentage(7), // DL Speed
+            Constraint::Percentage(7), // UL Speed
+            Constraint::Percentage(17), // Client
         ];
         let t = Table::new(rows, widths)
             .header(header)
