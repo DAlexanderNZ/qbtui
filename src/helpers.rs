@@ -39,7 +39,18 @@ impl App {
             qbit_rs::model::TrackerStatus::Updating => "Updating".to_string(),
             qbit_rs::model::TrackerStatus::NotWorking => "Not Working".to_string(),
         };
-        display_state
+        display_state   
+    }
+
+    /// Takes the torrent priority returned from qbittorrent api and converts it to a human readable string.
+    pub fn format_priority(&self, priority: qbit_rs::model::Priority) -> String {
+        match priority {
+            qbit_rs::model::Priority::DoNotDownload => "Do Not Download".to_string(),
+            qbit_rs::model::Priority::Normal => "Normal".to_string(),
+            qbit_rs::model::Priority::Mixed => "Medium".to_string(),
+            qbit_rs::model::Priority::High => "High".to_string(),
+            qbit_rs::model::Priority::Maximal => "Max".to_string(),
+        }
     }
 
     /// Helper to return a centered rect given x and y percentages.

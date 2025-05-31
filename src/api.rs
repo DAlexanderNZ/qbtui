@@ -30,6 +30,19 @@ impl App {
         Ok(())
     }
 
+    /// Torrent contents is a vector of details about the files in a torrent.
+    pub async fn get_torrent_contents(&mut self) -> Result<()> {
+        let api = self.api();
+        let torrent = self.torrents.get(self.state.selected().unwrap_or(0)).unwrap();
+        let hash = torrent.hash.clone().unwrap();
+        let content = api.get_torrent_contents(hash, None).await;
+        match content {
+            Ok(content) => self.torrent_content = content,
+            Err(err) => {println!("Error getting torrent content {:?}", err) },
+        }
+        Ok(())
+    }
+
     pub async fn get_torrent_trackers(&mut self) -> Result<()> {
         let api = self.api();
         let torrent  = self.torrents.get(self.state.selected().unwrap_or(0)).unwrap();

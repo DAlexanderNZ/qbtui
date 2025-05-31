@@ -3,6 +3,8 @@ use crate::App;
 pub enum Message {
     /// Refresh the list of torrents and other displayed torrent data.
     RefreshTorrents,
+    /// Api call to get the contents of the selected torrent.
+    TorrentFiles,
     /// Api call to get/refresh the selected torrent trackers.
     TorrentTrackers,
     /// Api call to get/refresh the selected torrent peers.
@@ -26,6 +28,9 @@ impl App {
                 if self.torrent_popup {
                     return self.info_tab.update_selected();
                 }
+            }
+            Message::TorrentFiles => {
+                let _ = self.get_torrent_contents().await;
             }
             Message::TorrentTrackers => {
                 let _ = self.get_torrent_trackers().await;

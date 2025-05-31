@@ -119,6 +119,7 @@ impl SelectedInfoTab {
     /// Return a message for updating the newly selected tab.
     pub fn update_selected(self) -> Option<Message> {
         match self {
+            SelectedInfoTab::Files => Some(Message::TorrentFiles),
             SelectedInfoTab::Trackers => Some(Message::TorrentTrackers),
             SelectedInfoTab::Peers => Some(Message::TorrentPeers),
             _ => None,

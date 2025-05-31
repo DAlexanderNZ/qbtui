@@ -169,12 +169,17 @@ impl App {
             SelectedInfoTab::Details => {
                 self.render_selected_torrent(frame, rects[1]);
             },
+            SelectedInfoTab::Files => {
+                self.render_torrent_files(frame, rects[1]);
+            },
             SelectedInfoTab::Trackers => {
                 self.render_torrent_trackers(frame, rects[1]);
             },
             SelectedInfoTab::Peers => {
                 self.render_torrent_peers(frame, rects[1]);
             },
+            #[allow(unused)]
+            // Allow unused for fallback in case of new tabs.
             _ => {
                 // Placeholder for other tabs
                 let placeholder = Paragraph::new("This tab is not implemented yet.")
@@ -306,6 +311,40 @@ impl App {
         .block(block.clone().title("Information").title_alignment(Alignment::Center));
         frame.render_widget(t, rects[2]);
         
+    }
+
+    /// Renders the torrent files for the selected torrent.
+    fn render_torrent_files(&self, frame: &mut Frame, area: Rect) {
+        let header = ["Name", "Priority", "Size", "Progress"]
+            .into_iter()
+            .map(Cell::from)
+            .collect::<Row>()
+            .style(Style::default().bold().fg(Color::White).bg(Color::Black))
+            .height(1);
+        let mut rows = vec![];
+        for file in self.torrent_content.iter() {
+            let item: Row<'_> = [
+                file.name.clone(),
+                self.format_priority(file.priority),
+                self.format_bytes(file.size as i64),
+                format!("{:.2}%", file.progress * 100.0),
+            ]
+            .into_iter()
+            .map(|content| Cell::new(content))
+            .collect::<Row>()
+            .style(Style::default().fg(Color::White).bg(Color::Black));
+            rows.push(item);
+        }
+        let widths = [
+            Constraint::Percentage(50), // Name
+            Constraint::Percentage(20), // Priority
+            Constraint::Percentage(20), // Size
+            Constraint::Percentage(10), // Progress
+        ];
+        let t = Table::new(rows, widths)
+            .header(header)
+            .block(Block::default().borders(Borders::ALL));
+        frame.render_widget(t, area);
     }
 
     /// Renders all the trackers for the selected torrent.

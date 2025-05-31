@@ -67,6 +67,7 @@ pub struct App {
     torrents: Vec<qbit_rs::model::Torrent>,
     torrent_trackers: Vec<Tracker>,
     torrent_peers: Option<qbit_rs::model::PeerSyncData>,
+    torrent_content: Vec<qbit_rs::model::TorrentContent>,
     // Torrent info popup
     torrent_popup: bool, 
     info_tab: SelectedInfoTab,
