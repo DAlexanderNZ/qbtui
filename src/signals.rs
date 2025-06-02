@@ -14,6 +14,7 @@ pub enum Message {
     /// Toggle the display of the configuration editor popup.
     /// Also toggles InputMode to/from Config.
     DisplayCfgEditor,
+    SaveCfg,
     /// Quit and exit the application.
     Quit,
 }
@@ -44,15 +45,15 @@ impl App {
             Message::DisplayCfgEditor => {
                 self.cfg_popup = !self.cfg_popup;
                 self.input_mode.toggle_config();
-                if self.save_cfg {
-                    self.cfg = self.input.clone();
-                    self.save_cfg = false;
-                    match confy::store("qbtui", None, &self.cfg) {
-                        Ok(_) => self.cfg_popup = false,
-                        Err(err) => eprintln!("Error creating config file: {}", err),
-                    }
-                    return Some(Message::RefreshTorrents);
+                return Some(Message::RefreshTorrents);
+            }
+            Message::SaveCfg => {
+                self.cfg = self.input.clone();
+                match confy::store("qbtui", None, &self.input) {
+                    Ok(_) => {},
+                    Err(err) => eprintln!("Error creating config file: {}", err),
                 }
+                return Some(Message::DisplayCfgEditor);
             }
             // Set running to false to quit the application.
             Message::Quit => {

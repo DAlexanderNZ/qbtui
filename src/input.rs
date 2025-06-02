@@ -158,7 +158,8 @@ impl App {
         let mut msg: Option<Message> = None;
         // Global keys
         match (key.modifiers, key.code) {
-            (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => msg = Some(Message::Quit),
+            (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) 
+            | (_, KeyCode::Esc) => msg = Some(Message::Quit),
             _ => {}
         }
 
@@ -166,7 +167,6 @@ impl App {
         match self.input_mode {
             InputMode::Normal => {
                 match (key.modifiers, key.code) {
-                    (_, KeyCode::Esc) => msg = Some(Message::Quit),
                     (_, KeyCode::Char('r')) => msg = Some(Message::RefreshTorrents),
                     // Open/Close edit config popup
                     (KeyModifiers::CONTROL, KeyCode::Char('e')) => {
@@ -186,15 +186,13 @@ impl App {
             },
             InputMode::Config => {
                 match (key.modifiers, key.code) {
-                    (KeyModifiers::CONTROL, KeyCode::Char('e')) 
-                    | (_, KeyCode::Esc) => {
-                        self.cfg_popup = !self.cfg_popup;
+                    (KeyModifiers::CONTROL, KeyCode::Char('e')) => {
                         self.input_mode = InputMode::Normal;
                         self.input = self.cfg.clone();
+                        msg = Some(Message::DisplayCfgEditor);
                     },
                     (KeyModifiers::CONTROL, KeyCode::Char('s')) => {
-                        self.save_cfg = true;
-                        msg = Some(Message::DisplayCfgEditor);
+                        msg = Some(Message::SaveCfg);
                     },
                     (_, KeyCode::Char(to_insert)) => self.enter_char(to_insert),
                     (_, KeyCode::Backspace) => self.delete_char(),

@@ -61,7 +61,6 @@ pub struct App {
     // Config handling
     cfg_popup: bool,
     first_cfg: bool,
-    save_cfg: bool,
     cfg: AppConfig,
     // Torrent data storage
     torrents: Vec<qbit_rs::model::Torrent>,
@@ -126,18 +125,14 @@ impl App {
         if self.cfg.password == "" || self.cfg_popup == true {
             // TODO: Make this a less ugly check for first run config.
             if self.cfg.password == "" {
+                self.cfg_popup = true;
                 if self.first_cfg == false {
                     self.input_mode = InputMode::Config;
                     self.reset_cursor();
                 }
-                self.cfg_popup = true;
             }
             let area = self.popup_area(frame.area(), 50, 50);
             self.render_cfg_popup(frame, area);
-
-            if self.save_cfg == true {
-                
-            }
         } 
     }
 }
