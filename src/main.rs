@@ -51,7 +51,7 @@ pub struct App {
     event_stream: EventStream,
     state: TableState,
     scroll_state: ScrollbarState,
-    into_tab_state: TableState,
+    info_tab_state: TableState,
     info_tab_scroll_state: ScrollbarState,
     scroll_context: ScrollContext,
     // Input

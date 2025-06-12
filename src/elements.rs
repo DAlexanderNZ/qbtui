@@ -315,7 +315,12 @@ impl App {
     }
 
     /// Renders the torrent files for the selected torrent.
-    fn render_torrent_files(&self, frame: &mut Frame, area: Rect) {
+    fn render_torrent_files(&mut self, frame: &mut Frame, area: Rect) {
+        let selected_row_style = Style::default()
+            .add_modifier(Modifier::BOLD)
+            .bg(Color::LightBlue)
+            .fg(Color::Black);
+
         let header = ["Name", "Priority", "Size", "Progress"]
             .into_iter()
             .map(Cell::from)
@@ -344,12 +349,25 @@ impl App {
         ];
         let t = Table::new(rows, widths)
             .header(header)
-            .block(Block::default().borders(Borders::ALL));
-        frame.render_widget(t, area);
+            .block(Block::default().borders(Borders::ALL))
+            .row_highlight_style(selected_row_style);
+        frame.render_stateful_widget(t, area, &mut self.info_tab_state);
+
+        // Render the scrollbar on the right side of the table if there are more than INFO_TAB_DETAILS files.
+        let file_count = self.torrent_content.len();
+        if file_count > INFO_TAB_DETAILS {
+            self.info_tab_scrollbar(file_count, INFO_TAB_DETAILS);
+            frame.render_stateful_widget(Scrollbar::new(ScrollbarOrientation::VerticalRight), area, &mut self.info_tab_scroll_state);
+        }
     }
 
     /// Renders all the trackers for the selected torrent.
-    fn render_torrent_trackers(&self, frame: &mut Frame, area: Rect) {
+    fn render_torrent_trackers(&mut self, frame: &mut Frame, area: Rect) {
+        let selected_row_style = Style::default()
+            .add_modifier(Modifier::BOLD)
+            .bg(Color::LightBlue)
+            .fg(Color::Black);
+        
         let header = ["URL", "Status", "Peers", "Seeds"]
             .into_iter()
             .map(Cell::from)
@@ -384,8 +402,16 @@ impl App {
         ];
         let t = Table::new(rows, widths)
             .header(header)
-            .block(Block::default().borders(Borders::ALL));
-        frame.render_widget(t, area);
+            .block(Block::default().borders(Borders::ALL))
+            .row_highlight_style(selected_row_style);
+        frame.render_stateful_widget(t, area, &mut self.info_tab_state);
+
+        // Render the scrollbar on the right side of the table if there are more than INFO_TAB_DETAILS trackers.
+        let tracker_count = self.torrent_trackers.len();
+        if tracker_count > INFO_TAB_DETAILS {
+            self.info_tab_scrollbar(tracker_count, INFO_TAB_DETAILS);
+            frame.render_stateful_widget(Scrollbar::new(ScrollbarOrientation::VerticalRight), area, &mut self.info_tab_scroll_state);
+        }
     }
 
     /// Renders the curent peers returned by the qBittorrent API.
@@ -448,9 +474,9 @@ impl App {
             .header(header)
             .block(Block::default().borders(Borders::ALL))
             .row_highlight_style(selected_row_style);
-        frame.render_stateful_widget(t, area, &mut self.into_tab_state);
+        frame.render_stateful_widget(t, area, &mut self.info_tab_state);
 
-        // Render the scrollbar on the right side of the table if there are more than 11 peers.
+        // Render the scrollbar on the right side of the table if there are more than INFO_TAB_DETAILS peers.
         let peer_count = self.torrent_peers.as_ref().unwrap().peers.as_ref().unwrap().len();
         if  peer_count > INFO_TAB_DETAILS {
             self.info_tab_scrollbar(peer_count, INFO_TAB_DETAILS);

@@ -1,4 +1,4 @@
-use crate::{signals::Message, App};
+use crate::{signals::Message, App, SelectedInfoTab};
 use ratatui::layout::{Constraint, Flex, Layout, Rect};
 use chrono::DateTime;
 
@@ -76,6 +76,17 @@ impl App {
         self.scroll_context = ScrollContext::InfoTab;
     }
 
+    /// Returns the length of the number of elelments in the info tab.
+    /// This is used to give the correct length to the scrollbar.
+    fn info_tab_elements_length(&self) -> usize {
+        match self.info_tab {
+            SelectedInfoTab::Trackers => self.torrent_trackers.len(),
+            SelectedInfoTab::Peers => self.torrent_peers.as_ref().unwrap().peers.as_ref().unwrap().len(),
+            SelectedInfoTab::Files => self.torrent_content.len(),
+            SelectedInfoTab::Details => 0 // Details tab does not have elements 
+        }
+    }
+
     /// Move the scrollbar state down by one position in the current ScrollContext.
     /// Returns an optional message if update is needed.
     pub fn scroll_down(&mut self) -> Option<Message> {
@@ -98,9 +109,9 @@ impl App {
                 }
             },
             ScrollContext::InfoTab => {
-                let i = match self.into_tab_state.selected() {
+                let i = match self.info_tab_state.selected() {
                     Some(i) => {
-                        if i >= self.torrent_peers.as_ref().unwrap().peers.as_ref().unwrap().len() - 1 {
+                        if i >= self.info_tab_elements_length() - 1 {
                             0
                         } else {
                             i + 1
@@ -108,7 +119,7 @@ impl App {
                     }
                     None => 0,
                 };
-                self.into_tab_state.select(Some(i));
+                self.info_tab_state.select(Some(i));
                 self.info_tab_scroll_state = self.info_tab_scroll_state.position(i);
             }
         }
@@ -138,17 +149,17 @@ impl App {
                 }
             },
             ScrollContext::InfoTab => {
-                let i = match self.into_tab_state.selected() {
+                let i = match self.info_tab_state.selected() {
                     Some(i) => {
                         if i == 0 {
-                            self.torrent_peers.as_ref().unwrap().peers.as_ref().unwrap().len() - 1
+                            self.info_tab_elements_length() - 1
                         } else {
                             i - 1
                         }
                     }
                     None => 0,
                 };
-                self.into_tab_state.select(Some(i));
+                self.info_tab_state.select(Some(i));
                 self.info_tab_scroll_state = self.info_tab_scroll_state.position(i);
             }
         }
