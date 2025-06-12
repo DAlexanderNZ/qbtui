@@ -247,6 +247,7 @@ impl App {
     fn next_column(&mut self) -> Option<Message> {
         match self.input_mode {
             InputMode::Normal => {
+                self.info_tab_state.select(None); //Reset selection when switching tabs.
                 return self.info_tab.next();         
             },
             InputMode::Config => { 
@@ -264,7 +265,8 @@ impl App {
     fn previous_column(&mut self) -> Option<Message> {
         match self.input_mode {
             InputMode::Normal => {
-                    return self.info_tab.previous();
+                self.info_tab_state.select(None);
+                return self.info_tab.previous();
             },
             InputMode::Config => { 
                 let input = self.current_input();
