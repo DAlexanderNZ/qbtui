@@ -213,21 +213,7 @@ impl App {
     fn next_row(&mut self) -> Option<Message> {
         match self.input_mode {
             InputMode::Normal => {
-                let i =  match self.state.selected() {
-                    Some(i) => {
-                        if i >= self.torrents.len() - 1 {
-                            0
-                        } else {
-                            i + 1
-                        }
-                    }
-                    None => 0,
-                };
-                self.state.select(Some(i));
-                self.scroll_state = self.scroll_state.position(i);
-                if self.torrent_popup {
-                    return self.info_tab.update_selected();
-                }
+                return self.scroll_down();
             },
             InputMode::Config => {
                 self.current_input.shift(1);
@@ -244,21 +230,7 @@ impl App {
     fn previous_row(&mut self) -> Option<Message> {
         match self.input_mode {
             InputMode::Normal => {
-                let i = match self.state.selected() {
-                    Some(i) => {
-                        if i == 0 {
-                            self.torrents.len() - 1
-                        } else {
-                            i - 1
-                        }
-                    }
-                    None => 0,
-                };
-                self.state.select(Some(i));
-                self.scroll_state = self.scroll_state.position(i);
-                if self.torrent_popup {
-                    return self.info_tab.update_selected();
-                }
+                return self.scroll_up();
             },
             InputMode::Config => {
                 self.current_input.shift(-1);

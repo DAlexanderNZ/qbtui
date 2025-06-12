@@ -13,6 +13,7 @@ mod input;
 use input::{CurentInput, SelectedInfoTab, InputMode};
 mod elements;
 mod helpers;
+use helpers::ScrollContext;
 mod api;
 mod signals;
 use signals::Message;
@@ -50,7 +51,9 @@ pub struct App {
     event_stream: EventStream,
     state: TableState,
     scroll_state: ScrollbarState,
-    //scroll_state: ScrollbarState,
+    into_tab_state: TableState,
+    info_tab_scroll_state: ScrollbarState,
+    scroll_context: ScrollContext,
     // Input
     // Current value of the input field
     input: AppConfig,
@@ -115,6 +118,7 @@ impl App {
         self.render_footer(frame, rects[footer]);      
 
         // Show torrent info footer
+        self.scroll_context = ScrollContext::TorrentsTable;
         if self.torrent_popup == true  && self.torrents.len() > 0 {
             self.render_torrent_into(frame, rects[1]);
         }  else {

@@ -10,6 +10,7 @@ use ratatui::{
 use qbit_rs::model::TrackerStatus;
 
 const TABLE_ITEM_HEIGHT: usize = 2;
+const INFO_TAB_DETAILS: usize = 11;
 const INFO_TEXT: [&str; 2] = [
     "(Esc) quit | (Tab) details | (↑) move up | (↓) move down | (←) move left | (→) move right",
     "(Ctrl + e) edit cfg | (r) refresh | (k) move up | (j) move down | (h) move left | (l) move right",
@@ -159,7 +160,7 @@ impl App {
     }
 
     /// Renders the selection tab for the torrent info section and calls the appropriate render function based on the selected tab.
-    pub fn render_torrent_into(&self, frame: &mut Frame, area: Rect) {
+    pub fn render_torrent_into(&mut self, frame: &mut Frame, area: Rect) {
         let vertical = Layout::vertical(
             [Constraint::Min(3), Constraint::Length(14)]
         );
@@ -388,9 +389,13 @@ impl App {
     }
 
     /// Renders the curent peers returned by the qBittorrent API.
-    fn render_torrent_peers(&self, frame: &mut Frame, area: Rect) {
+    fn render_torrent_peers(&mut self, frame: &mut Frame, area: Rect) {
         // TODO: Allow user selected sorting of the table.
-        // TODO: Add scrolling to the table and work though context switching with torrents table scrolling.
+        let selected_row_style = Style::default()
+            .add_modifier(Modifier::BOLD)
+            .bg(Color::LightBlue)
+            .fg(Color::Black);
+
         let header = [
             "IP", 
             "Link", 
@@ -441,7 +446,16 @@ impl App {
         ];
         let t = Table::new(rows, widths)
             .header(header)
-            .block(Block::default().borders(Borders::ALL));
-        frame.render_widget(t, area);
+            .block(Block::default().borders(Borders::ALL))
+            .row_highlight_style(selected_row_style);
+        frame.render_stateful_widget(t, area, &mut self.into_tab_state);
+
+        // Render the scrollbar on the right side of the table if there are more than 11 peers.
+        let peer_count = self.torrent_peers.as_ref().unwrap().peers.as_ref().unwrap().len();
+        if  peer_count > INFO_TAB_DETAILS {
+            self.info_tab_scrollbar(peer_count, INFO_TAB_DETAILS);
+            frame.render_stateful_widget(Scrollbar::new(ScrollbarOrientation::VerticalRight), area, &mut self.info_tab_scroll_state);
+        }
     }
+
 }

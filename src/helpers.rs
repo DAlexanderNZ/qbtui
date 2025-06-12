@@ -1,6 +1,13 @@
-use crate::App;
+use crate::{signals::Message, App};
 use ratatui::layout::{Constraint, Flex, Layout, Rect};
 use chrono::DateTime;
+
+#[derive(Debug, Default)]
+pub enum ScrollContext {
+    #[default]
+    TorrentsTable,
+    InfoTab,
+} 
 
 impl App {
     /// Takes the torrent state returned from qbittorrent api and converts it to a human readable string.
@@ -60,6 +67,92 @@ impl App {
         let [area] = horizontal.areas(area);
         let [area] = vertical.areas(area);
         area
+    }
+
+    /// Update the scrollbar state for the current info tabs content length.
+    pub fn info_tab_scrollbar(&mut self, length: usize, viewport: usize) {
+        self.info_tab_scroll_state = self.info_tab_scroll_state.content_length(length).viewport_content_length(viewport);
+        // Update the ScollContext to InfoTab.
+        self.scroll_context = ScrollContext::InfoTab;
+    }
+
+    /// Move the scrollbar state down by one position in the current ScrollContext.
+    /// Returns an optional message if update is needed.
+    pub fn scroll_down(&mut self) -> Option<Message> {
+        match self.scroll_context {
+            ScrollContext::TorrentsTable => {
+                let i =  match self.state.selected() {
+                    Some(i) => {
+                        if i >= self.torrents.len() - 1 {
+                            0
+                        } else {
+                            i + 1
+                        }
+                    }
+                    None => 0,
+                };
+                self.state.select(Some(i));
+                self.scroll_state = self.scroll_state.position(i);
+                if self.torrent_popup {
+                    return self.info_tab.update_selected();
+                }
+            },
+            ScrollContext::InfoTab => {
+                let i = match self.into_tab_state.selected() {
+                    Some(i) => {
+                        if i >= self.torrent_peers.as_ref().unwrap().peers.as_ref().unwrap().len() - 1 {
+                            0
+                        } else {
+                            i + 1
+                        }
+                    }
+                    None => 0,
+                };
+                self.into_tab_state.select(Some(i));
+                self.info_tab_scroll_state = self.info_tab_scroll_state.position(i);
+            }
+        }
+        None
+    }
+
+    /// Move the scrollbar state up by one position in the current ScrollContext.
+    /// Returns an optional message if update is needed.
+    pub fn scroll_up(&mut self) -> Option<Message>{
+        match self.scroll_context {
+            ScrollContext::TorrentsTable => {
+
+                let i = match self.state.selected() {
+                    Some(i) => {
+                        if i == 0 {
+                            self.torrents.len() - 1
+                        } else {
+                            i - 1
+                        }
+                    }
+                    None => 0,
+                };
+                self.state.select(Some(i));
+                self.scroll_state = self.scroll_state.position(i);
+                if self.torrent_popup {
+                    return self.info_tab.update_selected();
+                }
+            },
+            ScrollContext::InfoTab => {
+                let i = match self.into_tab_state.selected() {
+                    Some(i) => {
+                        if i == 0 {
+                            self.torrent_peers.as_ref().unwrap().peers.as_ref().unwrap().len() - 1
+                        } else {
+                            i - 1
+                        }
+                    }
+                    None => 0,
+                };
+                self.into_tab_state.select(Some(i));
+                self.info_tab_scroll_state = self.info_tab_scroll_state.position(i);
+            }
+        }
+        None            
     }
 
     /// Convert unix timestamp to human readable string.
