@@ -224,7 +224,7 @@ impl App {
                         self.magnet_link.clear();
                         self.reset_cursor();
                     }
-                    (_, KeyCode::Enter) => {},
+                    (_, KeyCode::Enter) => msg = Some(Message::AddTorrentMagnet),
                     (_, KeyCode::Char(to_insert)) => self.enter_char(to_insert),
                     (_, KeyCode::Backspace) => self.delete_char(), 
                     // TODO: Add Delete key support.

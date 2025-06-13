@@ -13,6 +13,8 @@ pub enum Message {
     DisplayTorrentInfo,
     /// Toggle the display of the add torrent popup.
     DisplayAddTorrent,
+    /// Api call to add a torrent using a magnet link.
+    AddTorrentMagnet,
     /// Toggle the display of the configuration editor popup.
     /// Also toggles InputMode to/from Config.
     DisplayCfgEditor,
@@ -50,6 +52,12 @@ impl App {
                 self.input_mode.toggle_add_torrent();
                 self.reset_cursor();
                 return Some(Message::RefreshTorrents);
+            }
+            Message::AddTorrentMagnet => {
+                match self.add_torrent_magnet().await {
+                    Ok(msg) => return Some(msg),
+                    Err(err) => eprintln!("Error adding torrent: {}", err),
+                };
             }
             Message::DisplayCfgEditor => {
                 self.cfg_popup = !self.cfg_popup;

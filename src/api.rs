@@ -1,6 +1,9 @@
-use crate::App;
+use crate::{signals::Message, App};
+use std::str::FromStr;
 use color_eyre::Result;
-use qbit_rs::{model::{Credential, GetTorrentListArg, TorrentFilter}, Qbit};
+use qbit_rs::{
+    model::{Credential, GetTorrentListArg, TorrentFilter, AddTorrentArg, TorrentSource, Sep}, 
+    Qbit};
 
 impl App {
     fn api(&self) -> Qbit {
@@ -69,5 +72,45 @@ impl App {
             Err(_err) => self.torrent_peers = None,
         }
         Ok(())
+    }
+
+    pub async fn add_torrent_magnet(&mut self) -> Result<Message> {
+        let api = self.api();
+        let magnet = self.magnet_link.clone();
+        if magnet.is_empty() {
+            return Err(color_eyre::eyre::eyre!("Magnet link is empty"));
+        }
+        // Construct arguments for api call.
+        let url = match Sep::from_str(magnet.as_str()) {
+            Ok(url) => url,
+            Err(_) => return Err(color_eyre::eyre::eyre!("Invalid magnet link format")),
+        };
+        let torrent_source = TorrentSource::Urls { urls: url };
+        let torrent = AddTorrentArg {
+            source: torrent_source,
+            savepath: None,
+            cookie: None,
+            category: None,
+            tags: None,
+            skip_checking: None,
+            paused: None,
+            root_folder: None,
+            rename: None,
+            up_limit: None,
+            download_limit: None,
+            ratio_limit: None,
+            seeding_time_limit: None,
+            auto_torrent_management: None,
+            sequential_download: None,
+            first_last_piece_priority: None,
+        };
+        let result = api.add_torrent(torrent).await;
+        match result {
+            Ok(_) => {
+                return Ok(Message::DisplayAddTorrent);
+            },
+            Err(_err) => {}
+        }
+        Ok(Message::RefreshTorrents)
     }
 }
