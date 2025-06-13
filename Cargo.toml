@@ -23,5 +23,6 @@ crossterm = { version = "0.28.1", features = ["event-stream"] }
 futures = "0.3.31"
 qbit-rs = "0.4.6"
 ratatui = "0.29.0"
+ratatui-explorer = "0.2.1"
 serde = { version = "1.0.219", features = ["derive"] }
 tokio = { version = "1.40.0", features = ["full"] }

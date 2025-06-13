@@ -1,4 +1,4 @@
-use crate::{App, Message};
+use crate::{App, Message, SelectedAddTorrentTab};
 use color_eyre::Result;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use futures::{FutureExt, StreamExt};
@@ -158,6 +158,8 @@ impl App {
                 }
             },
             InputMode::AddTorrent => {
+                // Unsure if the nested matchs is the best way to handle this.
+                // But it currently works for now ¯\_(ツ)_/¯.
                 match (key.modifiers, key.code) {
                     (KeyModifiers::CONTROL, KeyCode::Char('a')) => {
                         msg = Some(Message::DisplayAddTorrent);
@@ -166,14 +168,34 @@ impl App {
                         self.magnet_link.clear();
                         self.reset_cursor();
                     },
-                    (_, KeyCode::Tab) => self.add_torrent_tab.toggle(),
-                    (_, KeyCode::Enter) => msg = Some(Message::AddTorrentMagnet),
-                    (_, KeyCode::Char(to_insert)) => self.enter_char(to_insert),
-                    (_, KeyCode::Backspace) => self.delete_char(), 
-                    // TODO: Add Delete key support.
-                    (_, KeyCode::Left) => msg = self.previous_column(),
-                    (_, KeyCode::Right) => msg = self.next_column(),
-                    _ => {}
+                    (_, KeyCode::Tab) => self.add_torrent_tab.toggle(),                        
+                    _ => {
+                        match self.add_torrent_tab {
+                            SelectedAddTorrentTab::MagnetLink => {
+                                match key.code {
+                                    KeyCode::Enter => msg = Some(Message::AddTorrentMagnet),
+                                    KeyCode::Char(to_insert) => self.enter_char(to_insert),
+                                    KeyCode::Backspace => self.delete_char(), 
+                                    // TODO: Add Delete key support.
+                                    KeyCode::Left => msg = self.previous_column(),
+                                    KeyCode::Right => msg = self.next_column(),
+                                    _ => {}
+                                }
+                            },
+                            SelectedAddTorrentTab::File => {
+                                if key.code == KeyCode::Enter {
+                                    msg = Some(Message::AddTorrentFile);
+                                    let index = self.file_explorer.as_ref().unwrap().selected_idx();
+                                    let files = self.file_explorer.as_ref().unwrap().files();
+                                    let path= files.get(index).unwrap().path();
+                                    self.torrent_file_path = path.to_string_lossy().to_string();
+                                } else {
+                                    let event = Event::Key(key);
+                                    let _ =  self.file_explorer.as_mut().unwrap().handle(&event);
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

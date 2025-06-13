@@ -5,6 +5,7 @@ use ratatui::{
     widgets::{TableState, ScrollbarState}, 
     DefaultTerminal, Frame
 };
+use ratatui_explorer::{FileExplorer, Theme};
 use qbit_rs::model::Tracker;
 use serde::{Serialize, Deserialize};
 use confy;
@@ -78,8 +79,9 @@ pub struct App {
     add_torrent_popup: bool,
     add_torrent_tab: SelectedAddTorrentTab,
     magnet_link: String,
+    file_explorer: Option<FileExplorer>,
+    torrent_file_path: String,
 }
-
 
 impl App {
     /// Construct a new instance of [`App`].
@@ -93,6 +95,7 @@ impl App {
         self.charcter_index = 0;
         self.cfg = confy::load("qbtui", None)?;
         self.input = self.cfg.clone();
+        self.file_explorer = Some(FileExplorer::with_theme(Theme::default().add_default_title()).unwrap());
         self.get_torrents().await?;
         while self.running {
             terminal.draw(|frame| self.draw(frame))?;

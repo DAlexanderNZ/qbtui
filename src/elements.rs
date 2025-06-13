@@ -129,7 +129,7 @@ impl App {
         let help_text = Paragraph::new(add_text)
             .style(Style::new().fg(Color::White).bg(Color::Black))
             .block(block.clone())
-            .alignment(Alignment::Left);
+            .alignment(Alignment::Center);
         frame.render_widget(help_text, rects[1]);
 
         // Render the input cursor.
@@ -147,13 +147,21 @@ impl App {
     /// Renders a file input field for specifying a torrent file.
     /// Currently a placeholder as the functionality is not implemented.
     fn render_add_file(&self, frame: &mut Frame, area: Rect) {
-        let block = Block::bordered().style(Style::new().fg(Color::White).bg(Color::Black));
-        let file_text = Line::from("Torrent File: (Not implemented yet)");
-        let file_paragraph = Paragraph::new(file_text)
+        let vertical = Layout::vertical(
+            [Constraint::Fill(1), Constraint::Length(4)]
+        );
+        let rects = vertical.split(area);
+        frame.render_widget(&self.file_explorer.as_ref().unwrap().widget(), rects[0]);
+
+        let add_text = vec![
+            Line::from("(Tab) to toggle tab | (↑) move up | (↓) move down | (←) move up dir | (→) move down dir"),
+            Line::from("(Enter) select torrent file | (k) move up | (j) move down | (h) move up dir | (l) move down dir")
+        ];
+        let help_text = Paragraph::new(add_text)
             .style(Style::new().fg(Color::White).bg(Color::Black))
-            .block(block.clone().title(" Add Torrent ").title_alignment(Alignment::Center))
-            .alignment(Alignment::Left);
-        frame.render_widget(file_paragraph, area);
+            .block(Block::bordered().style(Style::new().fg(Color::White).bg(Color::Black)))
+            .alignment(Alignment::Center);
+        frame.render_widget(help_text, rects[1]);
     }
 
     /// Renders the torrents table in the following format:

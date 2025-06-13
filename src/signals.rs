@@ -15,6 +15,8 @@ pub enum Message {
     DisplayAddTorrent,
     /// Api call to add a torrent using a magnet link.
     AddTorrentMagnet,
+    /// Api call to add a torrent using a torrent file.
+    AddTorrentFile,
     /// Toggle the display of the configuration editor popup.
     /// Also toggles InputMode to/from Config.
     DisplayCfgEditor,
@@ -58,6 +60,9 @@ impl App {
                     Ok(msg) => return Some(msg),
                     Err(err) => eprintln!("Error adding torrent: {}", err),
                 };
+            }
+            Message::AddTorrentFile => {
+                println!("{}", self.torrent_file_path);
             }
             Message::DisplayCfgEditor => {
                 self.cfg_popup = !self.cfg_popup;
