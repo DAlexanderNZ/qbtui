@@ -10,13 +10,14 @@ use serde::{Serialize, Deserialize};
 use confy;
 // Local imports
 mod input;
-use input::{CurentInput, SelectedInfoTab, InputMode};
+use input::{CurentInput, InputMode};
 mod elements;
 mod helpers;
-use helpers::ScrollContext;
 mod api;
 mod signals;
 use signals::Message;
+mod enums;
+use enums::{SelectedInfoTab, ScrollContext, SelectedAddTorrentTab};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct AppConfig {
@@ -75,6 +76,7 @@ pub struct App {
     info_tab: SelectedInfoTab,
     // Add torrent popup
     add_torrent_popup: bool,
+    add_torrent_tab: SelectedAddTorrentTab,
     magnet_link: String,
 }
 

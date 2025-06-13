@@ -3,6 +3,7 @@ use color_eyre::Result;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use futures::{FutureExt, StreamExt};
 
+/// Ensure that the cursor position is within the bounds of the input string.
 fn clamp_cursor(new_cursor_pos: usize, input: &String) -> usize {
     new_cursor_pos.clamp(0, input.chars().count())
 }
@@ -33,7 +34,7 @@ impl InputMode {
     }
 }
 
-/// Stores the currently selected field being edited.
+/// Stores the currently selected config field being edited.
 #[derive(Default, Debug, Copy, Clone)]
 pub enum CurentInput {
     #[default]
@@ -75,65 +76,6 @@ impl CurentInput {
         // Add delta and wrap around using modulo arithmetic
         let new_index = (current_index + delta).rem_euclid(count) as usize;
         *self = Self::from_index(new_index);
-    }
-}
-
-/// Represents the currently selected tab for torrent information display.
-#[derive(Default, Debug, Clone, Copy, PartialEq)]
-pub enum SelectedInfoTab {
-    #[default]
-    Details,
-    Files,
-    Trackers,
-    Peers,
-}
-
-impl SelectedInfoTab {
-    fn to_index(self) -> usize {
-        match self {
-            SelectedInfoTab::Details => 0,
-            SelectedInfoTab::Files => 1,
-            SelectedInfoTab::Trackers => 2,
-            SelectedInfoTab::Peers => 3,
-        }
-    }
-
-    fn from_index(i: usize) -> Self {
-        match i {
-            0 => SelectedInfoTab::Details,
-            1 => SelectedInfoTab::Files,
-            2 => SelectedInfoTab::Trackers,
-            3 => SelectedInfoTab::Peers,
-            _ => panic!("Index out of range"),
-        }
-    }
-
-    fn next(&mut self) -> Option<Message> {
-        let current_index = self.to_index();
-        let new_index = (current_index + 1) % 4; // Wrap around last tab
-        *self = Self::from_index(new_index);
-        self.update_selected()
-    }
-
-    fn previous(&mut self) -> Option<Message> {
-        let current_index = self.to_index();
-        let new_index = if current_index == 0 {
-            3 // Wrap around to the last tab
-        } else {
-            (current_index - 1) % 4
-        };
-        *self = Self::from_index(new_index);
-        self.update_selected()
-    }
-
-    /// Return a message for updating the newly selected tab.
-    pub fn update_selected(self) -> Option<Message> {
-        match self {
-            SelectedInfoTab::Files => Some(Message::TorrentFiles),
-            SelectedInfoTab::Trackers => Some(Message::TorrentTrackers),
-            SelectedInfoTab::Peers => Some(Message::TorrentPeers),
-            _ => None,
-        }            
     }
 }
 
@@ -223,7 +165,8 @@ impl App {
                     (KeyModifiers::CONTROL, KeyCode::Char('w')) => {
                         self.magnet_link.clear();
                         self.reset_cursor();
-                    }
+                    },
+                    (_, KeyCode::Tab) => self.add_torrent_tab.toggle(),
                     (_, KeyCode::Enter) => msg = Some(Message::AddTorrentMagnet),
                     (_, KeyCode::Char(to_insert)) => self.enter_char(to_insert),
                     (_, KeyCode::Backspace) => self.delete_char(), 

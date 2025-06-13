@@ -1,4 +1,4 @@
-use crate::{App, CurentInput, input::SelectedInfoTab};
+use crate::{enums::{SelectedAddTorrentTab, SelectedInfoTab}, App, CurentInput};
 use ratatui::{
     layout::{Constraint, Alignment, Position, Layout, Rect},
     style::{Color, Modifier, Style, Stylize},
@@ -71,9 +71,38 @@ impl App {
     }
 
     /// Renders the add torrent popup.
-    /// Takes user input for magnet link.
+    /// Displays tabs for magnet link and torrent file.
     pub fn render_add_torrent_popup(&self, frame: &mut Frame, area: Rect) {
         // TODO: Add support for torrent files.
+        let veritcal = Layout::vertical(
+            [Constraint::Length(3), Constraint::Fill(1)]
+        );
+        let rects = veritcal.split(area);
+        self.render_add_tabs(frame, rects[0]);
+        match self.add_torrent_tab {
+            SelectedAddTorrentTab::MagnetLink => self.render_add_magent(frame, rects[1]),
+            SelectedAddTorrentTab::File => self.render_add_file(frame, rects[1]),
+        }
+        // TODO: Add block to support for user choice on the other options in AddTorrentArg
+    }
+
+    /// Renders the tabs for the add torrent popup.
+    fn render_add_tabs(&self, frame: &mut Frame, area: Rect) {
+        let block = Block::bordered().style(Style::new().fg(Color::White).bg(Color::Black));
+        let titles = [
+            "Magnet Link",
+            "Torrent File",
+        ];
+        let index = self.add_torrent_tab as usize;
+        let tab = Tabs::new(titles)
+            .block(block)
+            .highlight_style(Color::LightRed)
+            .select(index);
+        frame.render_widget(tab, area);
+    }
+
+    /// Renders the magnet link input field for adding a torrent.
+    fn render_add_magent(&self, frame: &mut Frame, area: Rect) {
         let vertical = Layout::vertical(
             [Constraint::Length(3), Constraint::Length(4)]
         );
@@ -94,8 +123,8 @@ impl App {
             .scroll((0, magent_scroll_offset));
         frame.render_widget(magnet_paragraph, rects[0]);
         let add_text = vec![
-            Line::from("Press (Ctrl + a) to close this popup (without adding torrent)."),
-            Line::from("Press (Enter) to add the torrent | Press (Ctrl + w) to clear the magnet link."),
+            Line::from("(Tab) to toggle tab | (Ctrl + a) to close this popup (without adding torrent)."),
+            Line::from("(Enter) to add the torrent | Press (Ctrl + w) to clear the magnet link."),
         ];
         let help_text = Paragraph::new(add_text)
             .style(Style::new().fg(Color::White).bg(Color::Black))
@@ -113,7 +142,18 @@ impl App {
         let x = x.min(rects[0].x + rects[0].width.saturating_sub(2));
         let y = rects[0].y + 1;
         frame.set_cursor_position(Position::new(x, y));
-        
+    }
+
+    /// Renders a file input field for specifying a torrent file.
+    /// Currently a placeholder as the functionality is not implemented.
+    fn render_add_file(&self, frame: &mut Frame, area: Rect) {
+        let block = Block::bordered().style(Style::new().fg(Color::White).bg(Color::Black));
+        let file_text = Line::from("Torrent File: (Not implemented yet)");
+        let file_paragraph = Paragraph::new(file_text)
+            .style(Style::new().fg(Color::White).bg(Color::Black))
+            .block(block.clone().title(" Add Torrent ").title_alignment(Alignment::Center))
+            .alignment(Alignment::Left);
+        frame.render_widget(file_paragraph, area);
     }
 
     /// Renders the torrents table in the following format:
@@ -248,7 +288,6 @@ impl App {
             "Peers",
         ];
         let index = self.info_tab as usize;
-        //print!("[INFO] Rendering info tab: {}", index);
         let tab = Tabs::new(titles)
         .block(block)
         .highlight_style(Color::LightRed)

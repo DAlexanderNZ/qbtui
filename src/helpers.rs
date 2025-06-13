@@ -1,13 +1,6 @@
-use crate::{signals::Message, App, SelectedInfoTab};
+use crate::{signals::Message, App, SelectedInfoTab, ScrollContext};
 use ratatui::layout::{Constraint, Flex, Layout, Rect};
 use chrono::DateTime;
-
-#[derive(Debug, Default)]
-pub enum ScrollContext {
-    #[default]
-    TorrentsTable,
-    InfoTab,
-} 
 
 impl App {
     /// Takes the torrent state returned from qbittorrent api and converts it to a human readable string.
@@ -39,7 +32,7 @@ impl App {
 
     /// Takes the tracker state returned from qbittorrent api and converts it to a human readable string.
     pub fn get_tracker_status(&self, status: qbit_rs::model::TrackerStatus) -> String {
-        let display_state= match status {
+        let display_state = match status {
             qbit_rs::model::TrackerStatus::Disabled => "Disabled".to_string(),
             qbit_rs::model::TrackerStatus::NotContacted => "Not Contacted".to_string(),
             qbit_rs::model::TrackerStatus::Working => "Working".to_string(),
