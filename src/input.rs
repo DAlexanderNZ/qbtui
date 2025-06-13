@@ -7,11 +7,12 @@ fn clamp_cursor(new_cursor_pos: usize, input: &String) -> usize {
     new_cursor_pos.clamp(0, input.chars().count())
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, PartialEq)]
 pub enum InputMode {
     #[default]
     Normal,
     Config,
+    AddTorrent,
 }
 
 impl InputMode {
@@ -19,6 +20,15 @@ impl InputMode {
         match self {
             InputMode::Normal => *self = InputMode::Config,
             InputMode::Config => *self = InputMode::Normal,
+            _ => {}
+        }
+    }
+
+    pub fn toggle_add_torrent(&mut self) {
+        match self {
+            InputMode::Normal => *self = InputMode::AddTorrent,
+            InputMode::AddTorrent => *self = InputMode::Normal,
+            _ => {}
         }
     }
 }
@@ -170,8 +180,11 @@ impl App {
                     (_, KeyCode::Char('r')) => msg = Some(Message::RefreshTorrents),
                     // Open/Close edit config popup
                     (KeyModifiers::CONTROL, KeyCode::Char('e')) => {
-                        msg = Some(Message::DisplayCfgEditor);
-                        self.reset_cursor();        
+                        msg = Some(Message::DisplayCfgEditor);       
+                    },
+                    // Open/Close add torrent popup
+                    (KeyModifiers::CONTROL, KeyCode::Char('a')) => {
+                        msg = Some(Message::DisplayAddTorrent);
                     },
                     (_, KeyCode::Tab) => msg = Some(Message::DisplayTorrentInfo),
                     // Moving about the table
@@ -187,7 +200,6 @@ impl App {
             InputMode::Config => {
                 match (key.modifiers, key.code) {
                     (KeyModifiers::CONTROL, KeyCode::Char('e')) => {
-                        self.input_mode = InputMode::Normal;
                         self.input = self.cfg.clone();
                         msg = Some(Message::DisplayCfgEditor);
                     },
@@ -203,6 +215,24 @@ impl App {
                     _ => {}   
                 }
             },
+            InputMode::AddTorrent => {
+                match (key.modifiers, key.code) {
+                    (KeyModifiers::CONTROL, KeyCode::Char('a')) => {
+                        msg = Some(Message::DisplayAddTorrent);
+                    },
+                    (KeyModifiers::CONTROL, KeyCode::Char('w')) => {
+                        self.magnet_link.clear();
+                        self.reset_cursor();
+                    }
+                    (_, KeyCode::Enter) => {},
+                    (_, KeyCode::Char(to_insert)) => self.enter_char(to_insert),
+                    (_, KeyCode::Backspace) => self.delete_char(), 
+                    // TODO: Add Delete key support.
+                    (_, KeyCode::Left) => msg = self.previous_column(),
+                    (_, KeyCode::Right) => msg = self.next_column(),
+                    _ => {}
+                }
+            }
         }
         msg
     }
@@ -219,7 +249,8 @@ impl App {
                 self.current_input.shift(1);
                 let input = self.current_input();
                 self.charcter_index = clamp_cursor(input.len(), input);
-            }
+            },
+            _ => {}
         }
         None
     }
@@ -236,7 +267,8 @@ impl App {
                 self.current_input.shift(-1);
                 let input = self.current_input();
                 self.charcter_index = clamp_cursor(input.len(), input);
-            }
+            },
+            _ => {}
         }
         None
     }
@@ -254,6 +286,11 @@ impl App {
                 let input = self.current_input();
                 let cursor_moved_right = self.charcter_index.saturating_add(1);
                 self.charcter_index = clamp_cursor(cursor_moved_right, input); 
+            },
+            InputMode::AddTorrent => {
+                let input = self.current_input();
+                let cursor_moved_right = self.charcter_index.saturating_add(1);
+                self.charcter_index = clamp_cursor(cursor_moved_right, input);
             }
         }
         None
@@ -272,6 +309,11 @@ impl App {
                 let input = self.current_input();
                 let cursor_moved_left = self.charcter_index.saturating_sub(1);
                 self.charcter_index = clamp_cursor(cursor_moved_left, input);
+            },
+            InputMode::AddTorrent => {
+                let input = self.current_input();
+                let cursor_moved_left = self.charcter_index.saturating_sub(1);
+                self.charcter_index = clamp_cursor(cursor_moved_left, input);
             }
         }
         None
@@ -279,19 +321,35 @@ impl App {
 
     /// Returns a static reference to the currently selected input field.
     fn current_input(&self) -> &String {
-        match self.current_input {
-            CurentInput::ApiUrl => &self.input.api_url,
-            CurentInput::Username => &self.input.username,
-            CurentInput::Password => &self.input.password
+        match self.input_mode {
+            InputMode::Config => {
+                match self.current_input {
+                    CurentInput::ApiUrl => &self.input.api_url,
+                    CurentInput::Username => &self.input.username,
+                    CurentInput::Password => &self.input.password
+                }
+            },
+            InputMode::AddTorrent => {
+                &self.magnet_link
+            },
+            _ => panic!("Cannot access input in other modes"),
         }
     }
 
     /// Returns a mutable reference to the currently selected input field.
     fn current_input_mut(&mut self) -> &mut String {
-        match self.current_input {
-            CurentInput::ApiUrl => &mut self.input.api_url,
-            CurentInput::Username => &mut self.input.username,
-            CurentInput::Password => &mut self.input.password
+        match self.input_mode {
+            InputMode::Config => {
+                match self.current_input {
+                    CurentInput::ApiUrl => &mut self.input.api_url,
+                    CurentInput::Username => &mut self.input.username,
+                    CurentInput::Password => &mut self.input.password
+                }
+            },
+            InputMode::AddTorrent => {
+                &mut self.magnet_link
+            },
+            _ => panic!("Cannot access input in other modes"),
         }
     }
 
@@ -327,6 +385,9 @@ impl App {
 
     /// Resets the charcter index cursor to the end of the current input field.
     pub fn reset_cursor(&mut self) {
-        self.charcter_index = self.current_input().chars().count();
+        // Needs to ensure that self.current_input() is not called on an InputMode that results in a panic.
+        if self.input_mode != InputMode::Normal {
+            self.charcter_index = self.current_input().chars().count();
+        }
     }
 }

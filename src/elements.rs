@@ -39,7 +39,7 @@ impl App {
         let rendered_password: String = std::iter::repeat("*")
             .take(self.input.password.len()).collect();
         let cfg_text = vec![
-            Line::from(format!("API URL: {}", self.input.api_url.as_str())),
+            Line::from(format!("API URL:  {}", self.input.api_url.as_str())),
             Line::from(format!("Username: {}", self.input.username.as_str())),
             Line::from(format!("Password: {}", rendered_password.as_str())),
         ];
@@ -52,15 +52,15 @@ impl App {
             Line::from("Press (Ctrl + e) to close this popup (without saving)."),
             Line::from("Press (Ctrl + s) to save the config."),
         ];
-        let cfg_save_paragraph = Paragraph::new(cfg_save_text)
+        let help_text = Paragraph::new(cfg_save_text)
             .style(Style::new().fg(Color::White).bg(Color::Black))
             .block(block.clone())
             .alignment(Alignment::Left);
-        frame.render_widget(cfg_save_paragraph, rects[1]);
+        frame.render_widget(help_text, rects[1]);
 
         // Render the input cursor
         let (label, line_index) = match self.current_input {
-            CurentInput::ApiUrl => ("API URL: ", 1),
+            CurentInput::ApiUrl => ("API URL:  ", 1),
             CurentInput::Username => ("Username: ", 2),
             CurentInput::Password => ("Password: ", 3),
         };
@@ -68,6 +68,52 @@ impl App {
         let x = rects[0].x + label.len() as u16 + self.charcter_index as u16 + 1;
         let y = rects[0].y + line_index as u16;
         frame.set_cursor_position(Position::new(x, y));
+    }
+
+    /// Renders the add torrent popup.
+    /// Takes user input for magnet link.
+    pub fn render_add_torrent_popup(&self, frame: &mut Frame, area: Rect) {
+        // TODO: Add support for torrent files.
+        let vertical = Layout::vertical(
+            [Constraint::Length(3), Constraint::Length(4)]
+        );
+        let rects = vertical.split(area);
+        // Ensure the scroll offset does not exceed the length of the magnet link.
+        let max_visible = rects[0].width.saturating_sub("Magent Link: ".len() as u16 + 1);
+        let mut magent_scroll_offset: u16 = 0;
+        if self.charcter_index as u16 > max_visible {
+            magent_scroll_offset = self.charcter_index as u16 - max_visible;
+        }
+
+        let block = Block::bordered().style(Style::new().fg(Color::White).bg(Color::Black));
+        let magnet_text = Line::from(format!("Magnet Link: {}", self.magnet_link.as_str()));
+        let magnet_paragraph = Paragraph::new(magnet_text)
+            .style(Style::new().fg(Color::White).bg(Color::Black))
+            .block(block.clone().title(" Add Torrent ").title_alignment(Alignment::Center))
+            .alignment(Alignment::Left)
+            .scroll((0, magent_scroll_offset));
+        frame.render_widget(magnet_paragraph, rects[0]);
+        let add_text = vec![
+            Line::from("Press (Ctrl + a) to close this popup (without adding torrent)."),
+            Line::from("Press (Enter) to add the torrent | Press (Ctrl + w) to clear the magnet link."),
+        ];
+        let help_text = Paragraph::new(add_text)
+            .style(Style::new().fg(Color::White).bg(Color::Black))
+            .block(block.clone())
+            .alignment(Alignment::Left);
+        frame.render_widget(help_text, rects[1]);
+
+        // Render the input cursor.
+        // Constrain cursor within the scrolled window.
+        let prefix = "Magnet Link: ".len() as u16;
+        let visible_idx = (self.charcter_index as u16).saturating_sub(magent_scroll_offset);
+        // Unclamped x inside widget.
+        let x = rects[0].x + prefix + visible_idx + 1;
+        // Clamp to right edge of the box.
+        let x = x.min(rects[0].x + rects[0].width.saturating_sub(2));
+        let y = rects[0].y + 1;
+        frame.set_cursor_position(Position::new(x, y));
+        
     }
 
     /// Renders the torrents table in the following format:

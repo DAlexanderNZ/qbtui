@@ -73,6 +73,9 @@ pub struct App {
     // Torrent info popup
     torrent_popup: bool, 
     info_tab: SelectedInfoTab,
+    // Add torrent popup
+    add_torrent_popup: bool,
+    magnet_link: String,
 }
 
 
@@ -137,7 +140,12 @@ impl App {
             }
             let area = self.popup_area(frame.area(), 50, 50);
             self.render_cfg_popup(frame, area);
-        } 
+        }
+        // Show add torrent popup on user input.
+        if self.add_torrent_popup == true {
+            let area = self.popup_area(frame.area(), 70, 50);
+            self.render_add_torrent_popup(frame, area);
+        }
     }
 }
 

@@ -11,9 +11,12 @@ pub enum Message {
     TorrentPeers,
     /// Toggle the display of the torrent info popup.
     DisplayTorrentInfo,
+    /// Toggle the display of the add torrent popup.
+    DisplayAddTorrent,
     /// Toggle the display of the configuration editor popup.
     /// Also toggles InputMode to/from Config.
     DisplayCfgEditor,
+    /// Save the current configuration to disk.
     SaveCfg,
     /// Quit and exit the application.
     Quit,
@@ -42,9 +45,16 @@ impl App {
             Message::DisplayTorrentInfo => {
                 self.torrent_popup = !self.torrent_popup;
             }
+            Message::DisplayAddTorrent => {
+                self.add_torrent_popup = !self.add_torrent_popup;
+                self.input_mode.toggle_add_torrent();
+                self.reset_cursor();
+                return Some(Message::RefreshTorrents);
+            }
             Message::DisplayCfgEditor => {
                 self.cfg_popup = !self.cfg_popup;
                 self.input_mode.toggle_config();
+                self.reset_cursor();
                 return Some(Message::RefreshTorrents);
             }
             Message::SaveCfg => {
