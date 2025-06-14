@@ -570,7 +570,10 @@ impl App {
         frame.render_stateful_widget(t, area, &mut self.info_tab_state);
 
         // Render the scrollbar on the right side of the table if there are more than INFO_TAB_DETAILS peers.
-        let peer_count = self.torrent_peers.as_ref().unwrap().peers.as_ref().unwrap().len();
+        let peer_count = match self.torrent_peers.as_ref() {
+            Some(peer_data) => peer_data.peers.as_ref().unwrap().len(),
+            None => 0,
+        };
         if  peer_count > INFO_TAB_DETAILS {
             self.info_tab_scrollbar(peer_count, INFO_TAB_DETAILS);
             frame.render_stateful_widget(Scrollbar::new(ScrollbarOrientation::VerticalRight), area, &mut self.info_tab_scroll_state);
