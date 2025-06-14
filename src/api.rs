@@ -1,8 +1,9 @@
 use crate::{signals::Message, App};
+use std::fs;
 use std::str::FromStr;
 use color_eyre::Result;
 use qbit_rs::{
-    model::{Credential, GetTorrentListArg, TorrentFilter, AddTorrentArg, TorrentSource, Sep}, 
+    model::{AddTorrentArg, Credential, GetTorrentListArg, Sep, TorrentFile, TorrentFilter, TorrentSource}, 
     Qbit};
 
 impl App {
@@ -74,20 +75,45 @@ impl App {
         Ok(())
     }
 
+    /// Takes [`App`] magnet_link and passes the magnet link to the API.
     pub async fn add_torrent_magnet(&mut self) -> Result<Message> {
-        let api = self.api();
         let magnet = self.magnet_link.clone();
         if magnet.is_empty() {
             return Err(color_eyre::eyre::eyre!("Magnet link is empty"));
         }
-        // Construct arguments for api call.
         let url = match Sep::from_str(magnet.as_str()) {
             Ok(url) => url,
             Err(_) => return Err(color_eyre::eyre::eyre!("Invalid magnet link format")),
         };
         let torrent_source = TorrentSource::Urls { urls: url };
+        Ok(self.add_torrent(torrent_source).await?)
+    }
+
+    /// Takes [`App`] torrent_file_path and passes the torrent file to the API.
+    pub async fn add_torrent_file(&mut self) -> Result<Message> {
+        let file_path = self.torrent_file_path.clone();
+        if file_path.is_empty() {
+            return Err(color_eyre::eyre::eyre!("Torrent file path is empty"));
+        }
+        // We read and pass the raw file into API
+        let file_data: Vec<u8> =  match fs::read(&file_path) {
+            Ok(data) => data,
+            Err(_) => return Err(color_eyre::eyre::eyre!("Failed to read torrent file")),
+        };
+        let torrent_file = TorrentFile {
+            // Unsure if I should be truncating the path to just the file name but works as is.
+            filename: file_path, 
+            data: file_data,
+        };
+        let torrent_source = TorrentSource::TorrentFiles { torrents: vec![torrent_file] };
+        Ok(self.add_torrent(torrent_source).await?)
+    }
+
+    /// Given a [`TorrentSource`], adds the torrent in qBittorrent.
+    async fn add_torrent(&mut self, source: TorrentSource) -> Result<Message> {
+        let api = self.api();
         let torrent = AddTorrentArg {
-            source: torrent_source,
+            source: source,
             savepath: None,
             cookie: None,
             category: None,

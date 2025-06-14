@@ -62,7 +62,10 @@ impl App {
                 };
             }
             Message::AddTorrentFile => {
-                println!("{}", self.torrent_file_path);
+               match self.add_torrent_file().await {
+                    Ok(msg) => return Some(msg),
+                    Err(err) => eprintln!("Error adding torrent: {}", err),
+                };
             }
             Message::DisplayCfgEditor => {
                 self.cfg_popup = !self.cfg_popup;
