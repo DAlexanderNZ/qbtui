@@ -8,7 +8,6 @@ use ratatui::{
 use ratatui_explorer::{FileExplorer, Theme};
 use qbit_rs::model::Tracker;
 use serde::{Serialize, Deserialize};
-use confy;
 // Local imports
 mod input;
 use input::{CurentInput, InputMode};
@@ -112,7 +111,7 @@ impl App {
         let rects;
         let footer: usize;
         // Split frame area depending on whether the torrent info section is active.
-        if self.torrent_popup == true {
+        if self.torrent_popup {
             let vertical = &Layout::vertical([Constraint::Min(5), Constraint::Length(17), Constraint::Length(4)]);
             rects = vertical.split(frame.area());
             footer = 2;
@@ -127,18 +126,18 @@ impl App {
 
         // Show torrent info footer
         self.scroll_context = ScrollContext::TorrentsTable;
-        if self.torrent_popup == true  && self.torrents.len() > 0 {
+        if self.torrent_popup && !self.torrents.is_empty() {
             self.render_torrent_into(frame, rects[1]);
         }  else {
             self.torrent_popup = false;
         }
         
         // Show cfg popup on first run or user input.
-        if self.cfg.password == "" || self.cfg_popup == true {
+        if self.cfg.password.is_empty() || self.cfg_popup{
             // TODO: Make this a less ugly check for first run config.
-            if self.cfg.password == "" {
+            if self.cfg.password.is_empty() {
                 self.cfg_popup = true;
-                if self.first_cfg == false {
+                if !self.first_cfg {
                     self.input_mode = InputMode::Config;
                     self.reset_cursor();
                 }
@@ -147,7 +146,7 @@ impl App {
             self.render_cfg_popup(frame, area);
         }
         // Show add torrent popup on user input.
-        if self.add_torrent_popup == true {
+        if self.add_torrent_popup {
             let area = self.popup_area(frame.area(), 70, 50);
             self.render_add_torrent_popup(frame, area);
         }

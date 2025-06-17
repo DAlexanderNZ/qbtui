@@ -36,8 +36,7 @@ impl App {
         );
         let rects = vertical.split(area);
         let block = Block::bordered().style(Style::new().fg(Color::White).bg(Color::Black));
-        let rendered_password: String = std::iter::repeat("*")
-            .take(self.input.password.len()).collect();
+        let rendered_password: String = "*".repeat(self.input.password.len());
         let cfg_text = vec![
             Line::from(format!("API URL:  {}", self.input.api_url.as_str())),
             Line::from(format!("Username: {}", self.input.username.as_str())),
@@ -210,17 +209,17 @@ impl App {
 
             let item: Row<'_> = [
                 torrent.name.clone().unwrap_or_else(|| String::from("")),
-                format!("{}", size),
-                format!("{}", downloaded),
+                size,
+                downloaded,
                 format!("{:.2}%", progress),
                 display_state,
-                format!("{}", dlspeed),
-                format!("{}", upspeed),
-                format!("{}", eta),
+                dlspeed,
+                upspeed,
+                eta,
                 format!("{:.4}", ratio),
             ]
             .into_iter()
-            .map(|content| Cell::new(content))
+            .map(Cell::new)
             .collect::<Row>()
             .style(Style::default().fg(Color::White).bg(color))
             .height(TABLE_ITEM_HEIGHT as u16);
@@ -318,7 +317,7 @@ impl App {
             .style(Style::new().fg(Color::White).bg(Color::Black))
             .block(block.clone().title(torrent_name).title_alignment(Alignment::Center))
             .gauge_style(Style::new().fg(Color::Green).bg(Color::Black))
-            .percent((selected_torrent.progress.unwrap_or_else(|| 0.0) * 100.0) as u16);
+            .percent((selected_torrent.progress.unwrap_or(0.0) * 100.0) as u16);
         frame.render_widget(progress, rects[0]);
 
         // Verbose torrent transfer info
@@ -332,7 +331,7 @@ impl App {
             format!("Connections: {:?}", selected_torrent.num_complete.unwrap_or(-1))
         ]
         .into_iter()
-        .map(|content| Cell::new(content))
+        .map(Cell::new)
         .collect::<Row>();
         rows.push(row_one);
         let row_two: Row<'_> = [
@@ -341,7 +340,7 @@ impl App {
             format!("Seeds: {:?}", selected_torrent.num_seeds.unwrap_or(-1))
         ]
         .into_iter()
-        .map(|content| Cell::new(content))
+        .map(Cell::new)
         .collect::<Row>();
         rows.push(row_two);
         let row_three: Row<'_> = [
@@ -350,7 +349,7 @@ impl App {
             format!("Peers: {:?}", selected_torrent.num_incomplete.unwrap_or(-1))
         ]
         .into_iter()
-        .map(|content| Cell::new(content))
+        .map(Cell::new)
         .collect::<Row>();
         rows.push(row_three);
         let row_four: Row<'_> = [
@@ -359,7 +358,7 @@ impl App {
             format!("Sequential Dl: {:?}", selected_torrent.seq_dl.unwrap())
         ]
         .into_iter()
-        .map(|content| Cell::new(content))
+        .map(Cell::new)
         .collect::<Row>();
         rows.push(row_four);
         let row_five: Row<'_> = [
@@ -368,7 +367,7 @@ impl App {
             format!("Last Seen Complete: {}", self.timestamp_human_readable(selected_torrent.last_activity))
         ]
         .into_iter()
-        .map(|content| Cell::new(content))
+        .map(Cell::new)
         .collect::<Row>();
         rows.push(row_five);
 
@@ -389,7 +388,7 @@ impl App {
             format!("Save Path: {}", selected_torrent.save_path.clone().unwrap())
         ]
         .into_iter()
-        .map(|content| Cell::new(content))
+        .map(Cell::new)
         .collect::<Row>();
         rows_two.push(row_one);
         let row_two = [
@@ -398,7 +397,7 @@ impl App {
             format!("Tracker: {}", selected_torrent.tracker.clone().unwrap())
         ]
         .into_iter()
-        .map(|content| Cell::new(content))
+        .map(Cell::new)
         .collect::<Row>();
         rows_two.push(row_two);
         let t = Table::new(rows_two, widths)
@@ -416,7 +415,7 @@ impl App {
 
         let header = ["Name", "Priority", "Size", "Progress"]
             .into_iter()
-            .map(Cell::from)
+            .map(Cell::new)
             .collect::<Row>()
             .style(Style::default().bold().fg(Color::White).bg(Color::Black))
             .height(1);
@@ -429,7 +428,7 @@ impl App {
                 format!("{:.2}%", file.progress * 100.0),
             ]
             .into_iter()
-            .map(|content| Cell::new(content))
+            .map(Cell::new)
             .collect::<Row>()
             .style(Style::default().fg(Color::White).bg(Color::Black));
             rows.push(item);
@@ -463,7 +462,7 @@ impl App {
         
         let header = ["URL", "Status", "Peers", "Seeds"]
             .into_iter()
-            .map(Cell::from)
+            .map(Cell::new)
             .collect::<Row>()
             .style(Style::default().bold().fg(Color::White).bg(Color::Black))
             .height(1);
@@ -482,7 +481,7 @@ impl App {
                 format!("{}", tracker.num_seeds),
             ]
             .into_iter()
-            .map(|content| Cell::new(content))
+            .map(Cell::new)
             .collect::<Row>()
             .style(Style::default().fg(Color::White).bg(color));
             rows.push(item);
@@ -527,7 +526,7 @@ impl App {
             "Client"
             ]
             .into_iter()
-            .map(Cell::from)
+            .map(Cell::new)
             .collect::<Row>()
             .style(Style::default().bold().fg(Color::White).bg(Color::Black))
             .height(1);
@@ -536,17 +535,17 @@ impl App {
             for (addr, peer) in peers.peers.as_ref().unwrap().iter() {
                 let item: Row<'_> = [
                     format!("{}", addr),
-                    format!("{}", peer.connection.as_ref().unwrap()),
-                    format!("{}", peer.country.as_ref().unwrap()),
-                    format!("{}", self.format_bytes(peer.downloaded.unwrap_or(0) as i64)),
-                    format!("{}", self.format_bytes(peer.uploaded.unwrap_or(0) as i64)),
+                    peer.connection.as_ref().unwrap().to_string(),
+                    peer.country.as_ref().unwrap().to_string(),
+                    self.format_bytes(peer.downloaded.unwrap_or(0) as i64).to_string(),
+                    self.format_bytes(peer.uploaded.unwrap_or(0) as i64).to_string(),
                     format!("{:.2}%", peer.progress.unwrap_or(0.0) * 100.0),
-                    format!("{}", self.format_rate(peer.dl_speed.unwrap_or(0) as i64)),
-                    format!("{}", self.format_rate(peer.up_speed.unwrap_or(0) as i64)),
-                    format!("{}", peer.client.as_ref().unwrap())
+                    self.format_rate(peer.dl_speed.unwrap_or(0) as i64).to_string(),
+                    self.format_rate(peer.up_speed.unwrap_or(0) as i64).to_string(),
+                    peer.client.as_ref().unwrap().to_string()
                 ]
                 .into_iter()
-                .map(|content| Cell::new(content))
+                .map(Cell::new)
                 .collect::<Row>()
                 .style(Style::default().fg(Color::White));
                 rows.push(item);

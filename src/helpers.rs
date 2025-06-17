@@ -32,14 +32,13 @@ impl App {
 
     /// Takes the tracker state returned from qbittorrent api and converts it to a human readable string.
     pub fn get_tracker_status(&self, status: qbit_rs::model::TrackerStatus) -> String {
-        let display_state = match status {
+        match status {
             qbit_rs::model::TrackerStatus::Disabled => "Disabled".to_string(),
             qbit_rs::model::TrackerStatus::NotContacted => "Not Contacted".to_string(),
             qbit_rs::model::TrackerStatus::Working => "Working".to_string(),
             qbit_rs::model::TrackerStatus::Updating => "Updating".to_string(),
             qbit_rs::model::TrackerStatus::NotWorking => "Not Working".to_string(),
-        };
-        display_state   
+        }
     }
 
     /// Takes the torrent priority returned from qbittorrent api and converts it to a human readable string.

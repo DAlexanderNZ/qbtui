@@ -4,7 +4,7 @@ use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use futures::{FutureExt, StreamExt};
 
 /// Ensure that the cursor position is within the bounds of the input string.
-fn clamp_cursor(new_cursor_pos: usize, input: &String) -> usize {
+fn clamp_cursor(new_cursor_pos: usize, input: &str) -> usize {
     new_cursor_pos.clamp(0, input.chars().count())
 }
 
@@ -84,20 +84,17 @@ impl App {
     pub async fn handle_crossterm_events(&mut self) -> Result<Option<Message>> {
         tokio::select! {
             event = self.event_stream.next().fuse() => {
-                match event {
-                    Some(Ok(evt)) => {
-                        match evt {
-                            Event::Key(key)
-                                if key.kind == KeyEventKind::Press
-                                    => return Ok(self.on_key_event(key)),
-                            Event::Mouse(_) => {},
-                            Event::Resize(_, _) => {}
-                            _ => {}
-                        }
+                if let Some(Ok(evt)) = event {
+                    match evt {
+                        Event::Key(key)
+                            if key.kind == KeyEventKind::Press
+                                => return Ok(self.on_key_event(key)),
+                        Event::Mouse(_) => {},
+                        Event::Resize(_, _) => {}
+                        _ => {}
                     }
-                    _ => {}
                 }
-            }
+            },
             _ = tokio::time::sleep(tokio::time::Duration::from_millis(100)) => {
                 // Sleep for a short duration to avoid busy waiting.
             }

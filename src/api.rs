@@ -86,7 +86,7 @@ impl App {
             Err(_) => return Err(color_eyre::eyre::eyre!("Invalid magnet link format")),
         };
         let torrent_source = TorrentSource::Urls { urls: url };
-        Ok(self.add_torrent(torrent_source).await?)
+        self.add_torrent(torrent_source).await
     }
 
     /// Takes [`App`] torrent_file_path and passes the torrent file to the API.
@@ -106,14 +106,14 @@ impl App {
             data: file_data,
         };
         let torrent_source = TorrentSource::TorrentFiles { torrents: vec![torrent_file] };
-        Ok(self.add_torrent(torrent_source).await?)
+        self.add_torrent(torrent_source).await
     }
 
     /// Given a [`TorrentSource`], adds the torrent in qBittorrent.
     async fn add_torrent(&mut self, source: TorrentSource) -> Result<Message> {
         let api = self.api();
         let torrent = AddTorrentArg {
-            source: source,
+            source,
             savepath: None,
             cookie: None,
             category: None,
